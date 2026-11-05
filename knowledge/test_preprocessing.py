@@ -116,6 +116,97 @@ class CleanTextTests(SimpleTestCase):
         for junk in ("Skip to", "cookies", "Menu", "---", "Share this", "Follow us", "©", "<p>", "&amp;", "​"):
             self.assertNotIn(junk, cleaned)
 
+    def test_learn_more_links_are_dropped(self):
+        self.assertEqual(clean_text("1 in 6 people are lonely.\nLearn more\nRead more."), "1 in 6 people are lonely.")
+
+
+class ResearchArticleTests(SimpleTestCase):
+    """Rules added after checking the team's real PubMed Central articles.
+    sample_data/research_article.txt copies their layout with made-up content."""
+
+    def setUp(self):
+        self.raw = (SAMPLE_DATA / "research_article.txt").read_text(encoding="utf-8")
+        self.cleaned = clean_text(self.raw)
+
+    def test_article_content_is_kept(self):
+        for text in (
+            "Weekly online book groups and loneliness in older adults: a pilot study",
+            "Loneliness scores fell by an average of 12 percent.",
+            "Short, regular online groups are a promising, low-cost way to reduce loneliness.",
+        ):
+            self.assertIn(text, self.cleaned)
+
+    def test_reference_list_and_everything_after_it_is_dropped(self):
+        for text in ("References", "Lee K, Patel R", "Book clubs as community", "Supplementary Materials", "Click here"):
+            self.assertNotIn(text, self.cleaned)
+        self.assertTrue(self.cleaned.endswith("Contributor Information\n\nSam Okafor."))
+
+    def test_article_chrome_lines_are_dropped(self):
+        for text in ("Find articles by", "Author information", "Article notes",
+                     "Copyright and License information", "PMC Copyright notice"):
+            self.assertNotIn(text, self.cleaned)
+
+    def test_emails_are_removed_with_their_label(self):
+        self.assertNotIn("@", self.cleaned)
+        self.assertNotIn("Email", self.cleaned)
+        self.assertIn("Alex Rivera, Department of Sample Studies, Example University.", self.cleaned)
+
+    def test_cleaning_twice_changes_nothing(self):
+        self.assertEqual(clean_text(self.cleaned), self.cleaned)
+
+    def test_citation_badges_are_removed_anywhere(self):
+        self.assertEqual(
+            clean_text("As shown before [DOI] [PubMed] [Google Scholar] [PMC free article] [CrossRef]."),
+            "As shown before .",
+        )
+
+    def test_references_can_be_kept(self):
+        cleaned = clean_text(self.raw, drop_references=False)
+        self.assertIn("References", cleaned)
+        self.assertIn("Video calls and wellbeing among older adults.", cleaned)
+        self.assertNotIn("[PubMed]", cleaned)  # badges still go
+
+    def test_heading_followed_by_prose_is_not_cut(self):
+        text = (
+            "Our guide to staying connected.\n\nReferences\n\n"
+            "Ask the front desk for printed copies of any guide.\n"
+            "Volunteers can help you find the right group.\n"
+            "Large-print versions are available on request."
+        )
+        self.assertEqual(clean_text(text), text)
+
+    def test_only_the_last_references_heading_counts(self):
+        text = (
+            "Contents\nIntroduction\nReferences\n\nIntroduction\n\nGroups help people feel connected.\n"
+            "Many groups meet online.\nSome meet in person.\n\nReferences\n\n"
+            "1.Lee K, et al. 2019.\n2.Nguyen T. 2021. doi: 10.0000/x\n3.Garcia M, et al. 2020."
+        )
+        cleaned = clean_text(text)
+        self.assertIn("Some meet in person.", cleaned)
+        self.assertNotIn("Lee K", cleaned)
+        self.assertTrue(cleaned.startswith("Contents\nIntroduction\nReferences"))  # table of contents kept
+
+    def test_tiny_references_section_is_not_cut(self):
+        text = "Main text about groups.\n\nReferences\n\nLee K, 2019."
+        self.assertEqual(clean_text(text), text)
+
+
+class EmailTests(SimpleTestCase):
+    def test_bare_address_and_labels(self):
+        self.assertEqual(clean_text("Contact the organizer at sam@example.org today."), "Contact the organizer at today.")
+        self.assertEqual(clean_text("Min Liu, Email: min@example.org."), "Min Liu.")
+        self.assertEqual(clean_text("Questions? E-mail: help@example.org"), "Questions?")
+
+    def test_line_of_only_addresses_is_dropped(self):
+        self.assertEqual(clean_text("Body.\nEmail: a@example.org; b@example.com"), "Body.")
+
+    def test_emails_can_be_kept(self):
+        line = "Email the organizer: sam@example.org"
+        self.assertEqual(clean_text(line, remove_emails=False), line)
+
+    def test_at_signs_that_are_not_emails_are_kept(self):
+        self.assertEqual(clean_text("Meet @ the library, 2 tickets @ $5."), "Meet @ the library, 2 tickets @ $5.")
+
 
 class IsUsefulTests(SimpleTestCase):
     def test_real_content_is_useful(self):

@@ -48,7 +48,10 @@ _BOILERPLATE_LINE_RE = re.compile(
     r"(skip to (main )?content|(accept|reject|manage) (all )?cookies|"
     r"subscribe( now)?|sign up for our newsletter|share( this( page| article)?)?|"
     r"follow us( on \w+)?|back to top|privacy policy|terms (of use|of service|and conditions)|"
-    r"menu|search|print( this page)?)[.!:]*",
+    r"menu|search|print( this page)?|learn more|read more|"
+    # Research-article pages (PubMed Central and similar journal sites).
+    r"author information|article notes|copyright and license information|pmc copyright notice|"
+    r"find articles by .+|click here for additional data file.*)[.!:]*",
     re.IGNORECASE,
 )
 # Lines that are boilerplate from their first words: copyright notices and cookie banners.
@@ -68,17 +71,59 @@ def _is_boilerplate(line):
     )
 
 
-def clean_text(text):
+# Link badges journal sites put after every citation.
+_CITATION_LINK_RE = re.compile(
+    r"\[(DOI|PubMed|Google Scholar|PMC free article|CrossRef|Free full text|Ref list)\]", re.IGNORECASE
+)
+# An email address, along with an "Email:" label in front of it.
+_EMAIL_RE = re.compile(r"(\b(e-?mail|contact)\s*:\s*)?[\w.+-]+@[\w-]+(\.[\w-]+)+", re.IGNORECASE)
+# Separators left dangling once an address is removed: "Min Liu, Email: x@y.org." -> "Min Liu."
+_DANGLING_SEPARATOR_RE = re.compile(r"\s*[,;]\s*(?=[.;]?$)")
+
+# A heading that starts the reference list of a research article.
+_REFERENCES_HEADING_RE = re.compile(
+    r"(references|bibliography|works cited|literature cited|reference list|citations):?", re.IGNORECASE
+)
+# Things nearly every citation line has and ordinary prose rarely does.
+_CITATION_SIGNAL_RE = re.compile(
+    r"\b(19|20)\d{2}\b|\bdoi\b|\bet al\b|\bvol\.|\bpp?\.\s*\d|\[(pubmed|google scholar|doi)\]", re.IGNORECASE
+)
+# Share of lines after the heading that must look like citations. Measured on
+# the team's PMC articles: reference lists scored 0.56 and 0.95, article bodies
+# never above 0.19.
+_REFERENCES_MIN_SIGNAL = 0.4
+
+
+def _drop_reference_list(lines):
+    """Cut everything from the last "References" heading on, but only when
+    what follows really looks like a citation list. Checking the content (not
+    just the heading's position) keeps clean_text stable when run twice."""
+    headings = [i for i, line in enumerate(lines) if _REFERENCES_HEADING_RE.fullmatch(line)]
+    if not headings:
+        return lines
+    start = headings[-1]
+    after = [line for line in lines[start + 1:] if line]
+    if len(after) < 3:
+        return lines
+    signal = sum(bool(_CITATION_SIGNAL_RE.search(line)) for line in after) / len(after)
+    return lines[:start] if signal >= _REFERENCES_MIN_SIGNAL else lines
+
+
+def clean_text(text, remove_emails=True, drop_references=True):
     """Return text that is safe and consistent to search and quote.
 
     - decodes HTML entities (&amp; -> &) and strips any leftover tags
     - normalizes unicode (non-breaking spaces, ligatures, full-width letters),
       curly quotes and hyphens to plain ASCII, and Windows line endings
     - removes invisible and control characters
+    - removes citation link badges ("[DOI] [PubMed] [Google Scholar]")
+    - removes email addresses, with any "Email:" label (remove_emails=False keeps them)
     - collapses runs of spaces/tabs and trims every line
-    - drops short boilerplate lines (cookie banners, "Skip to content", copyright)
+    - drops short boilerplate lines (cookie banners, "Skip to content", copyright,
+      and research-article chrome like "Author information", "Find articles by ...")
     - drops lines with no letters or digits (dividers like "---" or "|")
     - drops a line that repeats the previous non-blank line
+    - drops a research article's reference list (drop_references=False keeps it)
     - keeps paragraph breaks as a single blank line
 
     Running it twice gives the same result as running it once.
@@ -91,10 +136,13 @@ def clean_text(text):
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = _INVISIBLE_RE.sub("", text)
     text = _CONTROL_RE.sub("", text)
+    text = _CITATION_LINK_RE.sub("", text)
 
     lines = []
     previous = None
     for line in text.split("\n"):
+        if remove_emails and "@" in line:
+            line = _DANGLING_SEPARATOR_RE.sub("", _EMAIL_RE.sub("", line))
         line = _SPACES_RE.sub(" ", line).strip()
         if line and (_is_boilerplate(line) or not any(c.isalnum() for c in line)):
             continue
@@ -104,6 +152,8 @@ def clean_text(text):
         if line:
             previous = line
 
+    if drop_references:
+        lines = _drop_reference_list(lines)
     return _BLANK_LINES_RE.sub("\n\n", "\n".join(lines)).strip()
 
 

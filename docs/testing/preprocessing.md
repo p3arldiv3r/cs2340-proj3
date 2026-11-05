@@ -12,7 +12,7 @@ out. They have no database and no dependencies.
 
 | Function | What it does |
 |---|---|
-| `clean_text(text)` | Makes text consistent to search and safe to quote (details below) |
+| `clean_text(text, remove_emails=True, drop_references=True)` | Makes text consistent to search and safe to quote (details below) |
 | `is_useful(text, min_chars=40)` | False for documents with too little real content to store |
 | `content_hash(text)` | Fingerprint for spotting duplicates; ignores case, spacing and boilerplate |
 | `chunk_text(text, size=800, overlap=120)` | Splits cleaned text into chunks of at most `size` characters |
@@ -27,22 +27,63 @@ out. They have no database and no dependencies.
    ASCII, so "library’s" matches "library's". Em dashes are kept.
 4. **Invisible characters:** removes zero-width spaces, soft hyphens,
    byte-order marks and control characters.
-5. **Whitespace:** collapses runs of spaces and tabs, trims every line, and
+5. **Citation badges:** removes the link badges journal sites put after
+   citations: `[DOI]`, `[PubMed]`, `[Google Scholar]`, `[PMC free article]`,
+   `[CrossRef]`.
+6. **Email addresses:** removes them, along with an `Email:` label in front.
+   `"Min Liu, Email: min@example.org."` becomes `"Min Liu."`. Author emails
+   on research pages shouldn't be quoted to users. Pass `remove_emails=False`
+   to keep them, e.g. for an event's contact address; better still, put that
+   address in a CSV column so it lands in metadata.
+7. **Whitespace:** collapses runs of spaces and tabs, trims every line, and
    converts Windows line endings.
-6. **Boilerplate:** drops short boilerplate lines:
+8. **Boilerplate:** drops short boilerplate lines:
    - menu-style phrases, but only when they're the whole line: "Skip to main
      content", "Menu", "Share this page", "Follow us on …", "Privacy Policy"
    - lines starting with © or "Copyright 2026"
    - cookie banners and "All rights reserved" lines
+   - "Learn more" / "Read more" links
+   - research-article page chrome: "Author information", "Article notes",
+     "Copyright and License information", "PMC Copyright notice",
+     "Find articles by …", "Click here for additional data file"
 
    Real sentences that happen to use those words are kept, e.g. "Subscribe to
    updates at the front desk."
-7. **Dividers:** drops lines with no letters or digits (`----`, `| | |`).
-8. **Repeats:** drops a line that repeats the previous non-blank line (scraped
+9. **Dividers:** drops lines with no letters or digits (`----`, `| | |`).
+10. **Repeats:** drops a line that repeats the previous non-blank line (scraped
    pages often repeat headings).
-9. **Paragraphs:** keeps paragraph breaks as exactly one blank line.
+11. **Reference lists:** drops a research article's reference list and
+    everything after it (supplementary-file notices and similar). It cuts at
+    the *last* heading line named References, Bibliography, Works Cited,
+    Literature Cited, Reference List or Citations. It only cuts if at least 40%
+    of the lines after that heading look like citations, meaning they contain
+    a year, "doi", "et al", "vol." or "pp. 12". So a "References" heading
+    followed by ordinary text is left alone. Pass `drop_references=False` to
+    keep reference lists.
+
+    Why: almost every reference title contains words like "loneliness" and
+    "older adults". Left in, citation lists would be retrieved as "sources" in
+    place of actual findings. The 40% threshold comes from the team's two PMC
+    articles: their reference lists scored 56% and 95%, and no part of either
+    article body scored above 19%.
+12. **Paragraphs:** keeps paragraph breaks as exactly one blank line.
 
 Running `clean_text` twice gives the same result as running it once.
+
+### Results on the team's real articles
+
+Checked 2026-11-05 on the three articles that can be scraped (see
+`docs/testing/ingestion.md` for the four that need Save Page As):
+
+| Article | Before | After cleaning | Removed | Chunks |
+|---|---|---|---|---|
+| Ashley's PMC paper (VR/AR for older adults) | 121,139 chars | 88,415 | 27%, almost all the reference list | 215 → 158 |
+| Lily's PMC paper (AI chatbot and loneliness) | 93,794 | 75,821 | 19%, almost all the reference list | 165 → 133 |
+| WHO article | 2,448 | 2,436 | a stray "Learn more" | 4 → 4 |
+
+On all three, after cleaning:
+- no email addresses, citation badges, "Find articles by" lines or reference lists
+- cleaning a second time changes nothing
 
 ### How `chunk_text` splits
 
@@ -81,12 +122,21 @@ From the repo root:
 python manage.py test knowledge.test_preprocessing
 ```
 
-Expected: `Ran 43 tests ... OK`.
+Expected: `Ran 58 tests ... OK`.
 
 They cover:
 - **Each cleaning rule above:** includes checks that real sentences with
   boilerplate-looking words are kept, and that long lines are never treated
   as boilerplate.
+- **Research articles** (`sample_data/research_article.txt`, made-up content
+  in the real PMC page layout): article text kept; reference list and what
+  follows dropped; article chrome dropped; emails removed with their labels;
+  badges removed anywhere.
+- **Reference-list safeguards:** a heading followed by prose isn't cut, a
+  table-of-contents "References" entry isn't cut, tiny sections aren't cut,
+  and `drop_references=False` keeps them.
+- **Emails:** bare addresses, "Email:"/"E-mail:" labels, lines of only
+  addresses, `@` used as "at" kept, and `remove_emails=False` keeps them.
 - **Idempotence:** cleaning twice changes nothing.
 - **`is_useful`:** too-short documents, boilerplate-only documents, and
   documents with no letters.
@@ -129,6 +179,22 @@ Under **4 chunk(s), size 300, overlap 60**, check:
 - [ ] No chunk starts or ends in the middle of a word.
 - [ ] Chunks 2–4 each start with words from the end of the chunk before them.
 
+Then a research article:
+
+```
+python manage.py preview_preprocess sample_data/research_article.txt
+```
+
+`sample_data/research_article.txt` is a made-up article laid out exactly like
+the team's PubMed Central pages. Check that:
+
+- [ ] The title, Abstract, Methods, Results and Conclusion are all there.
+- [ ] Everything from `References` down is gone: the three citations,
+      "Associated Data", "Supplementary Materials", "Click here …".
+- [ ] There is no `@`, no "Email", no "Find articles by", no "Author information".
+- [ ] It ends with `Contributor Information` / `Sam Okafor.`, and the summary says
+      `1599 chars before, 898 after` and `2 chunk(s)`.
+
 Try it on your own data too: any `.txt` file works. Change `--size` and
 `--overlap` to see the effect. `--overlap` must be smaller than `--size`, or
 you get a clear error.
@@ -137,6 +203,7 @@ you get a clear error.
 
 - [ ] `python manage.py test knowledge.test_preprocessing` passes
 - [ ] Manual check: cleaned text has no boilerplate/junk, and chunks respect the size
+- [ ] Manual check: the research article loses its reference list, emails and page chrome, and keeps its findings
 - [ ] Other stories can call `preprocess()` / `clean_text()` / `chunk_text()` / `content_hash()`
 
 ## Known limits / follow-ups
@@ -147,5 +214,12 @@ you get a clear error.
 - **English-centric boilerplate list.** It catches common English website
   chrome only. Add patterns to `_BOILERPLATE_LINE_RE` / `_BOILERPLATE_START_RE`
   as real scraped data shows new junk, with a test for each.
+- **Research-article front matter stays.** Author names, affiliations and the
+  license notice before the Abstract are kept. That's about 1–3% of each PMC
+  paper, roughly one chunk. Cutting "everything before Abstract" would risk
+  losing real content on other kinds of pages.
+- **Reference cut is a heuristic.** A document that ends in a real "References"
+  section the team wants (say, a list of helpful books with years) would be
+  cut. Pass `drop_references=False` for sources like that.
 - **No spelling fixes, stemming or stopword removal.** Those belong to
   retrieval, which needs the original text to quote sources accurately.
