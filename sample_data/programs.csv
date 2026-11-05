@@ -1,0 +1,6 @@
+id,title,description,format,time_of_day,cost
+prog-001,Afternoon Book Circle,"A friendly online group that reads one book a month and meets to talk about it. New members are always welcome, and you can join even if you haven't finished the book.",Online,Afternoon,Free
+prog-002,Poetry Together,"Read and share favorite poems in a relaxed setting. No writing experience needed. Large-print copies are provided.",In person,Morning,Free
+prog-003,Garden Walk Club,"A gentle one-mile walk through the community garden, followed by tea. The path is flat and step-free, with benches along the way.",In person,Morning,$2
+prog-004,Tech Help Hour,"Bring your phone or tablet and get one-on-one help from a volunteer. Learn video calls, photos, and staying safe online.",In person,Afternoon,Free
+prog-005,Evening Music Listening,"Listen to a different decade of music each week and chat about the memories it brings back. Captions and a phone dial-in are available.",Online,Evening,Free

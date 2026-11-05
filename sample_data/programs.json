@@ -1,0 +1,26 @@
+[
+  {
+    "id": "prog-101",
+    "title": "Chair Yoga",
+    "description": "Gentle stretches done seated or standing next to a chair. Go at your own pace. Please check with your doctor before starting any exercise program.",
+    "format": "Online",
+    "time_of_day": "Morning",
+    "cost": "Free"
+  },
+  {
+    "id": "prog-102",
+    "title": "Watercolor Basics",
+    "description": "Learn simple watercolor techniques in a small, patient class. All supplies are included.",
+    "format": "In person",
+    "time_of_day": "Afternoon",
+    "cost": "$5 per class"
+  },
+  {
+    "id": "prog-103",
+    "title": "Coffee and Conversation",
+    "description": "An open, drop-in morning chat. No topic, no sign-up, just good company.",
+    "format": "In person",
+    "time_of_day": "Morning",
+    "cost": "Free"
+  }
+]
