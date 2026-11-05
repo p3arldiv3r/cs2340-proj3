@@ -116,6 +116,19 @@ class CleanTextTests(SimpleTestCase):
         for junk in ("Skip to", "cookies", "Menu", "---", "Share this", "Follow us", "©", "<p>", "&amp;", "​"):
             self.assertNotIn(junk, cleaned)
 
+    def test_share_buttons_and_feedback_widget_are_dropped(self):
+        # Layout of the end of the real CDC page, saved from Chrome.
+        tail = (
+            "Join a community garden.\n\nSources and Page Info\n\nFacebook\n\nLinkedIn\n\nTwitter\n\nSyndicate\n\n"
+            "Was this page helpful?\n\nThank you for your feedback!\n\n"
+            "How would you rate this information?\n\nNot helpful\nVery helpful\n\nRelated Pages\n\nView All"
+        )
+        self.assertEqual(clean_text(tail), "Join a community garden.\n\nSources and Page Info")
+
+    def test_bare_yes_and_no_answers_are_kept(self):
+        faq = "Is there a cost?\nNo.\n\nCan I bring a friend?\nYes!"
+        self.assertEqual(clean_text(faq), faq)
+
     def test_learn_more_links_are_dropped(self):
         self.assertEqual(clean_text("1 in 6 people are lonely.\nLearn more\nRead more."), "1 in 6 people are lonely.")
 

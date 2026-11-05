@@ -48,7 +48,13 @@ _BOILERPLATE_LINE_RE = re.compile(
     r"(skip to (main )?content|(accept|reject|manage) (all )?cookies|"
     r"subscribe( now)?|sign up for our newsletter|share( this( page| article)?)?|"
     r"follow us( on \w+)?|back to top|privacy policy|terms (of use|of service|and conditions)|"
-    r"menu|search|print( this page)?|learn more|read more|"
+    r"menu|search|print( this page)?|learn more|read more|view all|related (pages|links|articles)|"
+    # Share buttons, as bare network names.
+    r"facebook|twitter|x|linkedin|instagram|youtube|pinterest|email|syndicate|"
+    # Page feedback widgets (found on the real CDC page). Bare "Yes" / "No"
+    # answers are kept on purpose: in an FAQ they are the actual answer.
+    r"was this (page|information) helpful\?|how would you rate this (page|information)\?|"
+    r"thank you for your feedback|not helpful|very helpful|"
     # Research-article pages (PubMed Central and similar journal sites).
     r"author information|article notes|copyright and license information|pmc copyright notice|"
     r"find articles by .+|click here for additional data file.*)[.!:]*",
