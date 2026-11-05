@@ -7,7 +7,6 @@ RAG chatbot for a social wellness platform for older adults. UI follows
 ## Run locally
 
 ```
-cd wellness
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py createsuperuser
