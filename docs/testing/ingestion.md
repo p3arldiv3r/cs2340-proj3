@@ -30,7 +30,7 @@ robots.txt says. Four of the team's seven articles do (checked 2026-11-05):
 | Article | Result |
 |---|---|
 | WHO, both PMC papers (Ashley's, Lily's) | Scrape fine |
-| CDC (Aditi) | Blocked (Akamai, HTTP 403) |
+| CDC (Aditi) | Blocked (Akamai, HTTP 403). Saved from Chrome and uploaded: works (see check d) |
 | Michigan Medicine (Lily) | Blocked (Cloudflare, HTTP 403) |
 | NIA (Vinisha) | Blocked (CloudFront, HTTP 405) |
 | canada.ca (Benita) | Connection hangs until it times out |
@@ -187,10 +187,21 @@ Expect:
   file's "saved from url" comment or the page's canonical link
 
 If the metadata line is missing, the saved file didn't record the URL. The
-document is still ingested, with the file name as its ID. This step hasn't
-been run with a real browser save yet. It was checked with a downloaded copy of
-the WHO page, which gave the same text as scraping it. Please note here which
-browser you used and what you saw.
+document is still ingested, with the file name as its ID.
+
+**Verified 2026-11-05 with Chrome on Windows.** The CDC page saved with Ctrl+S
+gave a 734 KB file. That's much bigger than the page's original 48 KB, because
+Chrome saves the page as displayed, including UI injected by browser
+extensions. Uploading it gave:
+- title `Improving Social Connectedness | Social Connection | CDC`
+- `metadata: {'url': 'https://www.cdc.gov/social-connectedness/improving/index.html'}`,
+  read from both the "saved from url" comment and the canonical link
+- the full article, every section from "Building social connections matters"
+  to "Things parents can do"
+- no site menu, and nothing from the browser extension
+
+Share buttons and the feedback widget did come through; preprocessing removes
+them.
 
 **e. Export for your own story**
 
