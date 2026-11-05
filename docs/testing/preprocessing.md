@@ -42,7 +42,11 @@ out. They have no database and no dependencies.
      content", "Menu", "Share this page", "Follow us on …", "Privacy Policy"
    - lines starting with © or "Copyright 2026"
    - cookie banners and "All rights reserved" lines
-   - "Learn more" / "Read more" links
+   - "Learn more" / "Read more" / "View All" / "Related Pages" links
+   - share buttons as bare network names ("Facebook", "LinkedIn", "Twitter", "Syndicate")
+   - page feedback widgets ("Was this page helpful?", "Thank you for your
+     feedback!", "Not helpful" / "Very helpful"). Bare "Yes" / "No" lines are
+     kept on purpose, because in an FAQ they are the answer.
    - research-article page chrome: "Author information", "Article notes",
      "Copyright and License information", "PMC Copyright notice",
      "Find articles by …", "Click here for additional data file"
@@ -80,6 +84,7 @@ Checked 2026-11-05 on the three articles that can be scraped (see
 | Ashley's PMC paper (VR/AR for older adults) | 121,139 chars | 88,415 | 27%, almost all the reference list | 215 → 158 |
 | Lily's PMC paper (AI chatbot and loneliness) | 93,794 | 75,821 | 19%, almost all the reference list | 165 → 133 |
 | WHO article | 2,448 | 2,436 | a stray "Learn more" | 4 → 4 |
+| CDC article (saved from Chrome, uploaded) | 5,951 | 3,983 | share buttons, feedback widget, site chrome | 7 |
 
 On all three, after cleaning:
 - no email addresses, citation badges, "Find articles by" lines or reference lists
@@ -122,7 +127,7 @@ From the repo root:
 python manage.py test knowledge.test_preprocessing
 ```
 
-Expected: `Ran 58 tests ... OK`.
+Expected: `Ran 60 tests ... OK`.
 
 They cover:
 - **Each cleaning rule above:** includes checks that real sentences with
