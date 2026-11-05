@@ -6,6 +6,7 @@ navigation, headers, footers and forms are dropped, and if the page has a
 Uses only the standard library.
 """
 
+import re
 from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
@@ -86,10 +87,21 @@ def extract_text(html_text):
     return " ".join(parser.title.split()), text
 
 
-def robots_allowed(url):
-    """Check robots.txt. Fetched with our own user agent: RobotFileParser.read()
-    uses Python's default one, which some sites (e.g. Wikipedia) block, and
-    it then treats the block as "disallow everything"."""
+ALLOWED, DISALLOWED, BLOCKED = "allowed", "disallowed", "blocked"
+# Status codes sites use to turn away automated visitors.
+BLOCKED_CODES = (401, 403, 405, 429)
+SAVE_AS_HINT = (
+    "If it opens in your browser, save the page (File > Save Page As, as .html) "
+    "and add it with the upload method instead."
+)
+
+
+def robots_status(url):
+    """ALLOWED or DISALLOWED by the site's robots.txt rules, or BLOCKED if the
+    site refuses to even serve robots.txt to us (bot protection).
+
+    robots.txt is fetched with our own user agent: RobotFileParser.read() uses
+    Python's default one, which some sites (e.g. Wikipedia) block."""
     parsed = urlparse(url)
     robots = RobotFileParser()
     request = Request(f"{parsed.scheme}://{parsed.netloc}/robots.txt", headers={"User-Agent": USER_AGENT})
@@ -97,12 +109,34 @@ def robots_allowed(url):
         with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
             lines = response.read().decode("utf-8", errors="replace").splitlines()
     except HTTPError as exc:
-        # Same rules as RobotFileParser.read(): 401/403 = keep out, other errors = no rules.
-        return exc.code not in (401, 403)
+        # Like RobotFileParser.read(): 401/403 means keep out; any other error
+        # (e.g. 404, no robots.txt) means there are no rules.
+        return BLOCKED if exc.code in (401, 403) else ALLOWED
     except (URLError, TimeoutError, OSError):
-        return True  # No reachable robots.txt means no restrictions.
+        return ALLOWED  # No reachable robots.txt means no restrictions.
     robots.parse(lines)
-    return robots.can_fetch(USER_AGENT, url)
+    return ALLOWED if robots.can_fetch(USER_AGENT, url) else DISALLOWED
+
+
+_SAVED_FROM_RE = re.compile(r"<!--\s*saved from url=\(\d+\)(\S+?)\s*-->", re.IGNORECASE)
+_CANONICAL_RE = re.compile(
+    r"<link\b[^>]*\brel=[\"']canonical[\"'][^>]*\bhref=[\"']([^\"']+)"
+    r"|<link\b[^>]*\bhref=[\"']([^\"']+)[\"'][^>]*\brel=[\"']canonical"
+    r"|<meta\b[^>]*\bproperty=[\"']og:url[\"'][^>]*\bcontent=[\"']([^\"']+)",
+    re.IGNORECASE,
+)
+
+
+def find_original_url(html_text):
+    """The page's own address, from a saved page's "saved from url" comment or
+    its canonical / og:url tag. Lets uploaded .html files cite the real URL."""
+    for regex in (_SAVED_FROM_RE, _CANONICAL_RE):
+        match = regex.search(html_text)
+        if match:
+            url = next(g for g in match.groups() if g)
+            if url.startswith(("http://", "https://")):
+                return url
+    return ""
 
 
 class WebScrapeIngestor(Ingestor):
@@ -115,8 +149,12 @@ class WebScrapeIngestor(Ingestor):
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https") or not parsed.netloc:
             raise IngestionError(f"{url!r} is not a web address. It should start with http:// or https://.")
-        if self.check_robots and not robots_allowed(url):
-            raise IngestionError(f"{url} asks scrapers not to visit it (robots.txt), so it was skipped.")
+        if self.check_robots:
+            status = robots_status(url)
+            if status == DISALLOWED:
+                raise IngestionError(f"{url} is off-limits to scrapers in the site's robots.txt, so it was skipped.")
+            if status == BLOCKED:
+                raise IngestionError(f"{parsed.netloc} blocks automated access, so {url} can't be scraped. {SAVE_AS_HINT}")
 
         body, content_type = self._download(url)
         if "html" in content_type:
@@ -143,7 +181,13 @@ class WebScrapeIngestor(Ingestor):
                 content_type = response.headers.get_content_type()
                 return response.read().decode(charset, errors="replace"), content_type
         except HTTPError as exc:
-            raise IngestionError(f"{url} returned HTTP {exc.code} ({exc.reason}).")
+            message = f"{url} returned HTTP {exc.code} ({exc.reason})."
+            if exc.code in BLOCKED_CODES:
+                message += f" The site is probably blocking scrapers. {SAVE_AS_HINT}"
+            raise IngestionError(message)
         except (URLError, TimeoutError) as exc:
             reason = getattr(exc, "reason", exc)
-            raise IngestionError(f"Couldn't reach {url}: {reason}.")
+            message = f"Couldn't reach {url}: {reason}."
+            if "timed out" in str(reason).lower():
+                message += f" Some sites silently stall scrapers. {SAVE_AS_HINT}"
+            raise IngestionError(message)

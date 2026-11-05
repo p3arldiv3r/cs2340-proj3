@@ -6,6 +6,10 @@ Supported file types:
 - .csv: one document per row. Needs a text column ("text", "description",
   "body" or "content"); "title", "id" and any other columns are optional.
 - .json: a list of records (or {"records": [...]}), same fields as CSV.
+- .html / .htm: a web page saved from a browser (File > Save Page As). Text
+  is extracted exactly like the web scraper does, so sites that block
+  scrapers can still be added. The page's real URL is kept in
+  metadata["url"] when the saved file records it.
 """
 
 import csv
@@ -14,10 +18,11 @@ import json
 from pathlib import Path
 
 from .base import IngestionError, Ingestor, RawDocument
+from .web import extract_text, find_original_url
 
 
 TEXT_FIELDS = ("text", "description", "body", "content")
-SUPPORTED_TYPES = (".txt", ".md", ".csv", ".json")
+SUPPORTED_TYPES = (".txt", ".md", ".csv", ".json", ".html", ".htm")
 
 
 def _read(file):
@@ -59,6 +64,8 @@ class FileUploadIngestor(Ingestor):
             yield from self._records(list(csv.DictReader(io.StringIO(data))), name)
         elif suffix == ".json":
             yield from self._records(self._json_records(name, data), name)
+        elif suffix in (".html", ".htm"):
+            yield self._html_file(name, data)
         else:
             raise IngestionError(
                 f"Can't ingest {name}: supported file types are {', '.join(SUPPORTED_TYPES)}."
@@ -70,6 +77,20 @@ class FileUploadIngestor(Ingestor):
         if first_line.startswith("# "):
             title = first_line[2:].strip()
         return RawDocument(title=title, text=data, method=self.method, location=name, external_id=name)
+
+    def _html_file(self, name, data):
+        title, text = extract_text(data)
+        url = find_original_url(data)
+        return RawDocument(
+            title=title or _title_from_name(name),
+            text=text,
+            method=self.method,
+            location=name,
+            # The real URL is the stable ID if we know it, so re-uploading a
+            # newer save of the same page is recognized as the same document.
+            external_id=url or name,
+            metadata={"url": url} if url else {},
+        )
 
     def _json_records(self, name, data):
         try:

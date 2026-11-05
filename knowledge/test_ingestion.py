@@ -23,7 +23,14 @@ from knowledge.ingestion import (
     WebScrapeIngestor,
     get_ingestor,
 )
-from knowledge.ingestion.web import extract_text, robots_allowed
+from knowledge.ingestion.web import (
+    ALLOWED,
+    BLOCKED,
+    DISALLOWED,
+    extract_text,
+    find_original_url,
+    robots_status,
+)
 
 
 SAMPLE_DATA = Path(settings.BASE_DIR) / "sample_data"
@@ -159,6 +166,34 @@ class FileUploadTests(SimpleTestCase):
         with self.assertRaisesMessage(IngestionError, "File not found"):
             self.fetch(SAMPLE_DATA / "does_not_exist.csv")
 
+    def test_saved_html_page(self):
+        [doc] = self.fetch(SAMPLE_DATA / "sample_page.html")
+        self.assertEqual(doc.title, "Garden Walk Club | Sample Community Network")
+        self.assertEqual(doc.method, "upload")
+        self.assertIn("step-free", doc.text)
+        # Same extraction as the scraper: nav, scripts and footer are dropped.
+        for junk in ("console.log", "Contact", "newsletter"):
+            self.assertNotIn(junk, doc.text)
+
+    def test_saved_html_records_the_real_url(self):
+        html = (
+            "<!DOCTYPE html>\n<!-- saved from url=(0035)https://www.example.org/article -->\n"
+            "<html><head><title>Article</title></head><body><main><p>Body</p></main></body></html>"
+        )
+        [doc] = self.fetch(self.write_temp("Article.html", html))
+        self.assertEqual(doc.metadata, {"url": "https://www.example.org/article"})
+        self.assertEqual(doc.external_id, "https://www.example.org/article")
+
+    def test_saved_html_without_url_uses_file_name(self):
+        [doc] = self.fetch(self.write_temp("page.htm", "<p>No title or URL here.</p>"))
+        self.assertEqual((doc.title, doc.external_id, doc.metadata), ("Page", "page.htm", {}))
+
+    def test_uploaded_html_file_object(self):
+        upload = SimpleUploadedFile("saved.html", b"<title>Saved</title><p>From a form.</p>")
+        [doc] = self.fetch(upload)
+        self.assertEqual(doc.title, "Saved")
+        self.assertIn("From a form.", doc.text)
+
 
 class ExtractTextTests(SimpleTestCase):
     def test_sample_page_keeps_only_main_content(self):
@@ -185,7 +220,29 @@ class ExtractTextTests(SimpleTestCase):
         self.assertNotIn("Foot", text)
 
 
-@mock.patch("knowledge.ingestion.web.robots_allowed", return_value=True)
+class FindOriginalUrlTests(SimpleTestCase):
+    def test_saved_from_comment(self):
+        html = "<!-- saved from url=(0024)https://example.org/a -->"
+        self.assertEqual(find_original_url(html), "https://example.org/a")
+
+    def test_canonical_link_either_attribute_order(self):
+        self.assertEqual(
+            find_original_url('<link rel="canonical" href="https://example.org/b">'), "https://example.org/b"
+        )
+        self.assertEqual(
+            find_original_url("<link href='https://example.org/c' rel='canonical'>"), "https://example.org/c"
+        )
+
+    def test_og_url(self):
+        html = '<meta property="og:url" content="https://example.org/d">'
+        self.assertEqual(find_original_url(html), "https://example.org/d")
+
+    def test_no_url_or_relative_url(self):
+        self.assertEqual(find_original_url("<p>nothing</p>"), "")
+        self.assertEqual(find_original_url('<link rel="canonical" href="/relative">'), "")
+
+
+@mock.patch("knowledge.ingestion.web.robots_status", return_value=ALLOWED)
 class WebScrapeTests(SimpleTestCase):
     def setUp(self):
         self.ingestor = WebScrapeIngestor()
@@ -227,13 +284,30 @@ class WebScrapeTests(SimpleTestCase):
     def test_http_error_is_a_plain_error(self, _robots):
         error = HTTPError("https://example.org/gone", 404, "Not Found", {}, None)
         with mock.patch("knowledge.ingestion.web.urlopen", side_effect=error):
-            with self.assertRaisesMessage(IngestionError, "returned HTTP 404"):
+            with self.assertRaises(IngestionError) as caught:
                 self.fetch("https://example.org/gone")
+        self.assertIn("returned HTTP 404", str(caught.exception))
+        self.assertNotIn("Save Page As", str(caught.exception))  # a 404 isn't bot blocking
+
+    def test_bot_blocking_codes_suggest_saving_the_page(self, _robots):
+        for code in (401, 403, 405, 429):
+            error = HTTPError("https://example.org/a", code, "Blocked", {}, None)
+            with self.subTest(code=code), mock.patch("knowledge.ingestion.web.urlopen", side_effect=error):
+                with self.assertRaisesMessage(IngestionError, "Save Page As"):
+                    self.fetch("https://example.org/a")
 
     def test_unreachable_site_is_a_plain_error(self, _robots):
         with mock.patch("knowledge.ingestion.web.urlopen", side_effect=URLError("no route")):
-            with self.assertRaisesMessage(IngestionError, "Couldn't reach"):
+            with self.assertRaises(IngestionError) as caught:
                 self.fetch("https://example.invalid/")
+        self.assertIn("Couldn't reach", str(caught.exception))
+        self.assertNotIn("Save Page As", str(caught.exception))
+
+    def test_timeout_suggests_saving_the_page(self, _robots):
+        timeout = TimeoutError("The read operation timed out")
+        with mock.patch("knowledge.ingestion.web.urlopen", side_effect=timeout):
+            with self.assertRaisesMessage(IngestionError, "Save Page As"):
+                self.fetch("https://example.org/slow")
 
     def test_non_web_address_is_rejected(self, _robots):
         for bad in ("ftp://example.org/x", "example.org", "file:///etc/passwd"):
@@ -241,14 +315,25 @@ class WebScrapeTests(SimpleTestCase):
                 self.fetch(bad)
 
     def test_robots_txt_disallow_is_respected(self, robots):
-        robots.return_value = False
+        robots.return_value = DISALLOWED
         with mock.patch("knowledge.ingestion.web.urlopen") as urlopen:
-            with self.assertRaisesMessage(IngestionError, "robots.txt"):
+            with self.assertRaisesMessage(IngestionError, "off-limits to scrapers in the site's robots.txt"):
                 self.fetch("https://example.org/private")
         urlopen.assert_not_called()
 
+    def test_blocked_site_says_blocked_not_robots_rules(self, robots):
+        robots.return_value = BLOCKED
+        with mock.patch("knowledge.ingestion.web.urlopen") as urlopen:
+            with self.assertRaises(IngestionError) as caught:
+                self.fetch("https://example.org/article")
+        message = str(caught.exception)
+        self.assertIn("example.org blocks automated access", message)
+        self.assertIn("Save Page As", message)
+        self.assertNotIn("robots.txt", message)
+        urlopen.assert_not_called()
+
     def test_robots_check_can_be_turned_off(self, robots):
-        robots.return_value = False
+        robots.return_value = BLOCKED
         ingestor = WebScrapeIngestor(check_robots=False)
         with mock.patch("knowledge.ingestion.web.urlopen", return_value=FakeResponse("<p>Hi</p>")):
             self.assertEqual(len(list(ingestor.fetch("https://example.org/mine"))), 1)
@@ -257,34 +342,38 @@ class WebScrapeTests(SimpleTestCase):
 class RobotsTxtTests(SimpleTestCase):
     ROBOTS = "User-agent: *\nDisallow: /private/\n"
 
-    def allowed(self, url, **urlopen_kwargs):
+    def status(self, url, **urlopen_kwargs):
         with mock.patch("knowledge.ingestion.web.urlopen", **urlopen_kwargs) as urlopen:
-            result = robots_allowed(url)
+            result = robots_status(url)
         return result, urlopen
 
+    def robots_response(self):
+        return FakeResponse(self.ROBOTS, content_type="text/plain")
+
     def test_follows_disallow_rules(self):
-        response = FakeResponse(self.ROBOTS, content_type="text/plain")
-        self.assertTrue(self.allowed("https://example.org/public", return_value=response)[0])
-        response = FakeResponse(self.ROBOTS, content_type="text/plain")
-        self.assertFalse(self.allowed("https://example.org/private/page", return_value=response)[0])
+        self.assertEqual(self.status("https://example.org/public", return_value=self.robots_response())[0], ALLOWED)
+        self.assertEqual(
+            self.status("https://example.org/private/page", return_value=self.robots_response())[0], DISALLOWED
+        )
 
     def test_fetches_robots_with_our_user_agent(self):
-        response = FakeResponse(self.ROBOTS, content_type="text/plain")
-        _, urlopen = self.allowed("https://example.org/page", return_value=response)
+        _, urlopen = self.status("https://example.org/page", return_value=self.robots_response())
         request = urlopen.call_args.args[0]
         self.assertEqual(request.full_url, "https://example.org/robots.txt")
         self.assertTrue(request.get_header("User-agent").startswith("cs2340-proj3"))
 
     def test_missing_robots_txt_allows_everything(self):
         error = HTTPError("https://example.org/robots.txt", 404, "Not Found", {}, None)
-        self.assertTrue(self.allowed("https://example.org/page", side_effect=error)[0])
+        self.assertEqual(self.status("https://example.org/page", side_effect=error)[0], ALLOWED)
 
-    def test_forbidden_robots_txt_disallows(self):
-        error = HTTPError("https://example.org/robots.txt", 403, "Forbidden", {}, None)
-        self.assertFalse(self.allowed("https://example.org/page", side_effect=error)[0])
+    def test_forbidden_robots_txt_means_blocked(self):
+        for code in (401, 403):
+            error = HTTPError("https://example.org/robots.txt", code, "Forbidden", {}, None)
+            with self.subTest(code=code):
+                self.assertEqual(self.status("https://example.org/page", side_effect=error)[0], BLOCKED)
 
     def test_unreachable_robots_txt_allows(self):
-        self.assertTrue(self.allowed("https://example.org/page", side_effect=URLError("down"))[0])
+        self.assertEqual(self.status("https://example.org/page", side_effect=URLError("down"))[0], ALLOWED)
 
 
 class PreviewCommandTests(SimpleTestCase):
