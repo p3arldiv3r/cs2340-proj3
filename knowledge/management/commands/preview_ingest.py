@@ -1,4 +1,5 @@
 import json
+import sys
 from dataclasses import asdict
 
 from django.core.management.base import BaseCommand, CommandError
@@ -23,6 +24,9 @@ class Command(BaseCommand):
                             help="web only: skip the robots.txt check (only for sites you run).")
 
     def handle(self, method, locations, json_path, full, ignore_robots, **options):
+        # Windows consoles can't print every character; show "?" instead of crashing.
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(errors="replace")
         ingestor = get_ingestor(method, check_robots=False) if method == "web" and ignore_robots \
             else get_ingestor(method)
 
