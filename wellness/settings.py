@@ -108,6 +108,5 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
 
-# TODO: RAG settings (LLM provider, top-k, chunk size, slow-response threshold)
-# go here once the pipeline is built. Read any API keys from environment
-# variables; never commit them.
+# TODO: RAG settings (top-k, chunk size, slow-response threshold)
+# go here once the pipeline is built.
