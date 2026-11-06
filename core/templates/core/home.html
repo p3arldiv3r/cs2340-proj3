@@ -3,9 +3,26 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<p>Placeholder page. Stories that live here:</p>
-<ul>
-<li>End User: access the chatbot through a hosted web application</li>
-</ul>
+<div class="page-heading home-heading"><p class="eyebrow">Welcome to your little corner of connection</p><h1>A good place to begin.</h1><p>Find something to enjoy. Meet someone new. Take it one small step at a time.</p></div>
+<div class="home-grid">
+  <section class="hero-card">
+    <div class="leaf-motif" aria-hidden="true"><span></span><span></span><i></i></div>
+    <p class="eyebrow">A little company, a new possibility</p><h2>What would feel<br>good today?</h2>
+    <p>A conversation over coffee. Time for a good book. A chance to try something new.</p>
+    <p>Explore activities with a little help from your assistant.</p>
+    <a class="button" href="{% url 'assistant:chat' %}">Find something for me <span aria-hidden="true">↗</span></a>
+    <p class="hero-footnote">Your pace. Your choice. Always.</p>
+  </section>
+  <div class="secondary-stack">
+    <section class="card"><p class="eyebrow">Something to look forward to</p><h2>Small moments.<br>Shared interests.</h2><p>Browse the activities in our directory, from creative classes to friendly conversations.</p><a class="text-link" href="{% url 'core:activities' %}">Explore activities →</a></section>
+    <section class="resource-card"><p class="eyebrow">A gentle reminder</p><h2>You don't have to have it all figured out.</h2><p>Bring a question, a little curiosity, or just yourself. That's a good start.</p></section>
+  </div>
+</div>
+<section class="context-strip" aria-labelledby="explore-title"><div><p class="eyebrow">Follow your curiosity</p><h2 id="explore-title">What interests you?</h2><p>Choose a topic to start a question. Nothing is saved.</p></div><div class="interest-chips">
+<a class="chip" href="{% url 'assistant:chat' %}?question=Tell%20me%20about%20the%20Book%20Circle">Reading ↗</a>
+<a class="chip" href="{% url 'assistant:chat' %}?question=Tell%20me%20about%20Watercolor%20Basics">Arts &amp; crafts ↗</a>
+<a class="chip" href="{% url 'assistant:chat' %}?question=Tell%20me%20about%20Chair%20Yoga">Gentle movement ↗</a>
+</div></section>
+<section class="section-heading" id="activities"><div><p class="eyebrow">From our sample directory</p><h2>A few possibilities.</h2></div><a class="text-link" href="{% url 'core:activities' %}">See all activities →</a></section>
+<div class="activity-grid">{% for document in activities %}{% include "core/_activity_card.html" %}{% empty %}<section class="card"><h3>A fresh start.</h3><p>Our directory is being prepared. You can still ask the assistant about the available sources.</p></section>{% endfor %}</div>
 {% endblock %}

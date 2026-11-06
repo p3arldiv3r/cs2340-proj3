@@ -1,41 +1,62 @@
 # Wellness assistant (Project 3)
 
-RAG chatbot for a social wellness platform for older adults. UI follows
-[DESIGN.md](DESIGN.md) ("Garden" design system; tokens are in
-`core/static/core/garden.css`).
+A Django web assistant for social wellness information and activities for older adults. Answers are extracted from a curated knowledge base and include checkable source passages. No language model, paid API, or embeddings are required.
 
 ## Run locally
 
+Requires Python 3.11+.
+
+```powershell
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt
+.venv/Scripts/python manage.py migrate
+.venv/Scripts/python manage.py ingest upload sample_data/programs.json
+.venv/Scripts/python manage.py ingest upload sample_data/book_circle.md
+.venv/Scripts/python manage.py ingest upload sample_data/faq.txt
+.venv/Scripts/python manage.py runserver
 ```
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver
+
+Open http://127.0.0.1:8000/assistant/. Try “What happens at Chair Yoga?” or “Find free online morning activities”. Sample activities are fictional demonstration records; load your reviewed topic sources for real use.
+
+## How it works
+
+```text
+URL/file -> ingestion -> RawDocument -> preprocessing -> Source/Document/Chunk storage
+Question -> intent/template -> ranked retrieval -> extractive answer + cited evidence
 ```
 
-## Where each story goes
+- `knowledge/ingestion/`: web pages, TXT, Markdown, CSV, JSON, and saved HTML.
+- `knowledge/preprocessing.py`: cleaning, usefulness checks, content fingerprints, and overlapping chunks.
+- `knowledge/pipeline.py`: atomic per-source replacement; the ingest command persists data.
+- `knowledge/retrieval.py`: small-corpus lexical ranking, synonyms, and supported metadata constraints.
+- `assistant/rag.py`: application entry point.
+- `assistant/answer_builder.py`: structured Answer/Citation results; separate from the web UI for a future LLM upgrade.
+- `assistant/views.py` and templates: public question form, answers, expandable evidence and original-source links.
+- `core/` and shared templates: responsive Garden home, activities, help, and staff layouts; browser-local text size and contrast controls.
+- Every application page includes a bottom-right assistant launcher. Its native dialog uses the same chat component and CSRF-protected `/assistant/ask/` service as the full-page assistant. Escape/Close returns focus to the launcher; mobile uses an expanded panel above the page. The launcher links to the full-page assistant when JavaScript is unavailable.
+- `accounts/`: custom Django user. Chat does not require login or save conversation history.
+- `evaluation/`, `monitoring/`: future work; pages remain staff-only placeholders.
 
-Every file below is a stub (`raise NotImplementedError` or a placeholder page)
-with a TODO naming its story.
+Answers quote source text rather than synthesize new facts. Retrieval may miss paraphrases or misinterpret complex queries. Follow-up questions do not use conversation memory. Source documents and chunks are managed through the CLI and Django admin; the knowledge management page remains a placeholder.
 
-| Story | App / file |
-|---|---|
-| End User: access the chatbot through a hosted web app | `core/`, `wellness/settings.py` (env vars for hosting) |
-| End User: ask natural language questions | `assistant/views.py`, `assistant/rag.py` |
-| End User: responses grounded in the dataset | `assistant/rag.py`, `knowledge/retrieval.py`, `assistant/answer_builder.py` |
-| End User: see which sources were used | `assistant/models.py`, `assistant/templates/assistant/chat.html` |
-| Developer: define and update the dataset | `knowledge/models.py`, `knowledge/views.py` |
-| Developer: ingest with 2+ distinct methods | `knowledge/ingestion/web.py` (web scraper), `knowledge/ingestion/upload.py` (our data files) |
-| Developer: clean and preprocess data | `knowledge/preprocessing.py` |
-| Developer: prompts chosen by question type | `assistant/prompts.py` (response template per question type) |
-| Developer: test accuracy against known questions | `evaluation/` (`runner.py`) |
-| Administrator: monitor latency and failures | `monitoring/` (`services.py`) |
-| Administrator: clear or reload the knowledge base | `knowledge/pipeline.py`, `knowledge/views.py` |
-| Administrator: view usage logs | `monitoring/models.py`, `monitoring/views.py` |
+## Add data
 
-## How answers are built
+```sh
+python manage.py ingest upload path/to/article.html
+python manage.py ingest web https://example.org/article
+```
 
-No language model. The knowledge base is built from web scraping and data
-files we provide. `knowledge/retrieval.py` finds the most relevant passages,
-and `assistant/answer_builder.py` assembles the reply from them using the
-template for the question type, citing its sources.
+Repeated ingestion of the same method/location replaces that source's documents. Failed fetches or writes preserve the existing source data. CSV/JSON records need a text/description/body/content field; other fields become metadata. See [ingestion](docs/testing/ingestion.md) and [preprocessing](docs/testing/preprocessing.md) documentation.
+
+## Verify
+
+```sh
+python manage.py test
+python manage.py makemigrations --check --dry-run
+```
+
+## Hosting
+
+See [deployment instructions](docs/deployment.md) for PythonAnywhere or another WSGI host, production settings, persistent SQLite, static assets, and public-URL acceptance checks. A real hosting account and deployment are required to make the app publicly accessible.
+
+The accessible “Garden” visual direction is described in [DESIGN.md](DESIGN.md); it includes future product features beyond the implemented chatbot.

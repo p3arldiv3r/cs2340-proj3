@@ -1,0 +1,8 @@
+<article class="card activity-card">
+<p class="eyebrow">{{ document.metadata.format|default:"Activity" }}{% if document.metadata.time_of_day %} · {{ document.metadata.time_of_day }}{% endif %}</p>
+<h3>{{ document.title }}</h3>
+<p>{{ document.text|truncatewords:28 }}</p>
+{% if document.metadata.cost %}<p class="activity-facts">{{ document.metadata.cost }}{% if document.metadata.time_of_day %} · {{ document.metadata.time_of_day }}{% endif %}</p>{% endif %}
+<a class="text-link" href="{% url 'assistant:chat' %}?question={{ document.title|urlencode }}">Ask about this activity →</a>
+<details class="source-detail"><summary>View source: {{ document.title }}</summary><div class="source-content"><p class="record-id">Record ID: {{ document.external_id }}</p><blockquote>{{ document.text }}</blockquote>{% if document.public_url %}<a href="{{ document.public_url }}">Read original source ↗</a>{% endif %}</div></details>
+</article>

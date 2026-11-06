@@ -1,0 +1,9 @@
+{% if answer.sources %}
+<div class="source-list"><h3>Sources used</h3><ol>
+{% for source in answer.sources %}<li><details class="source-detail">
+<summary>Source {{ source.number }}: {{ source.title }}</summary>
+<div class="source-content"><p class="record-id">Record ID: {{ source.external_id }}</p><blockquote>{{ source.excerpt }}</blockquote>
+{% if source.url %}<a href="{{ source.url }}" rel="noopener noreferrer">Read original: {{ source.title }} ↗</a>{% else %}<p class="muted">This document was provided as a file. The supporting passage is shown above.</p>{% endif %}
+</div></details></li>{% endfor %}
+</ol></div>
+{% endif %}

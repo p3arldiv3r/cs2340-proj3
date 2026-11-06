@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Activities{% endblock %}
+{% block content %}
+<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">Make space for something you enjoy</p><h1>A little more connection.</h1><p>Explore the activities in our directory, then ask your assistant for details.</p></div>
+<div class="context-strip compact"><p><strong>A note about this directory.</strong> These are sample activity records. Local availability, registration, and current schedules have not been verified.</p></div>
+<div class="activity-grid">{% for document in activities %}{% include "core/_activity_card.html" %}{% empty %}<section class="card"><h2>The directory is being prepared.</h2><p>Check back for activities or ask the assistant about the available sources.</p></section>{% endfor %}</div>
+{% endblock %}

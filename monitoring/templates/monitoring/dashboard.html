@@ -3,10 +3,6 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<p>Placeholder page. Stories that live here:</p>
-<ul>
-<li>Administrator: monitor system performance (latency, failures)</li>
-<li>Administrator: view basic usage logs</li>
-</ul>
+<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">Staff workspace</p><h1>{{ title }}</h1><p>A place to understand how the assistant is working.</p></div>
+<section class="hero-card"><p class="eyebrow">Service health</p><h2>Room to keep improving.</h2><p>Usage and response-time reporting are planned for a future update. No usage metrics are collected or displayed here yet.</p><p>Application errors are available through the server logs.</p><a class="text-link" href="{% url 'assistant:chat' %}">Open the assistant →</a></section>
 {% endblock %}

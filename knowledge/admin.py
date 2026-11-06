@@ -1,3 +1,5 @@
 from django.contrib import admin
-
-# Register your models here.
+from .models import Source, Document, Chunk
+admin.site.register(Source)
+admin.site.register(Document)
+admin.site.register(Chunk)
