@@ -3,12 +3,6 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<p>Placeholder page. Stories that live here:</p>
-<ul>
-<li>Developer: define and update the dataset used by the RAG system</li>
-<li>Developer: ingest data using at least two distinct ingestion methods</li>
-<li>Developer: clean and preprocess data before ingestion</li>
-<li>Administrator: manually clear or reload the knowledge base</li>
-</ul>
+<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">Staff workspace</p><h1>{{ title }}</h1><p>The documents behind every answer.</p></div>
+<div class="home-grid"><section class="hero-card"><p class="eyebrow">Source library</p><h2>Good answers begin with good sources.</h2><p>Review the sources, documents, and passages available to the assistant in Django administration.</p><a class="button" href="{% url 'admin:knowledge_document_changelist' %}">Review documents →</a></section><section class="card"><p class="eyebrow">Adding knowledge</p><h2>Keep the directory useful.</h2><p>Ingest files and web pages with the <code>ingest</code> management command. Text is cleaned and split into searchable passages automatically.</p><p>Upload and reload controls for this page are planned for a future update.</p></section></div>
 {% endblock %}

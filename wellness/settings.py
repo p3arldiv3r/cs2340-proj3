@@ -38,6 +38,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -72,7 +73,7 @@ WSGI_APPLICATION = "wellness.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "NAME": os.environ.get("WELLNESS_DATABASE_PATH", str(BASE_DIR / "db.sqlite3")),
     }
 }
 
@@ -108,5 +109,22 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "accounts.User"
 
 
-# TODO: RAG settings (top-k, chunk size, slow-response threshold)
-# go here once the pipeline is built.
+if not DEBUG:
+    from django.core.exceptions import ImproperlyConfigured
+    if not os.environ.get('WELLNESS_SECRET_KEY'):
+        raise ImproperlyConfigured('Set WELLNESS_SECRET_KEY for production.')
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+
+# Set only when the hosting proxy strips incoming forwarded headers and sets this itself.
+if os.environ.get('WELLNESS_TRUST_PROXY', 'false').lower() == 'true':
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+STORAGES = {
+    'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+    'staticfiles': {'BACKEND': (
+        'django.contrib.staticfiles.storage.StaticFilesStorage' if DEBUG else
+        'whitenoise.storage.CompressedManifestStaticFilesStorage'
+    )},
+}

@@ -3,9 +3,6 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<h1>{{ title }}</h1>
-<p>Placeholder page. Stories that live here:</p>
-<ul>
-<li>Developer: test response accuracy against known questions</li>
-</ul>
+<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">Staff workspace</p><h1>{{ title }}</h1><p>Make sure each answer earns your trust.</p></div>
+<section class="hero-card"><p class="eyebrow">Quality checks</p><h2>A clearer picture, coming soon.</h2><p>An evaluation dashboard is planned for comparing answers with known questions and supporting documents.</p><p>For now, run the Django test suite to check retrieval, citations, and the chat experience.</p><a class="text-link" href="{% url 'assistant:chat' %}">Try a question in the assistant →</a></section>
 {% endblock %}

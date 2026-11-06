@@ -1,0 +1,26 @@
+<div class="chat-surface" data-chat-root>
+  <div class="chat-log" role="log" aria-live="polite" aria-label="Assistant conversation" tabindex="0" data-chat-log>
+    <article class="message message-assistant"><p class="message-label"><span class="assistant-symbol" aria-hidden="true">✧</span> Assistant</p><p>Hello, glad you're here. What would you like to find out today?</p><p class="muted">I can help you explore activities and information from our available sources. I'm not a person and can't give medical advice.</p></article>
+    {% if answer %}
+    <article class="message message-user"><p class="message-label">You</p><p>{{ question }}</p></article>
+    <article class="message message-assistant"><p class="message-label"><span class="assistant-symbol" aria-hidden="true">✧</span> Assistant</p><div class="answer-copy">{{ answer.text|linebreaksbr }}</div>{% include "assistant/_sources.html" %}</article>
+    {% endif %}
+  </div>
+  <div class="quick-questions" aria-label="Questions to try">
+    <button type="button" class="chip" data-quick-question="Find free online morning activities">Free online activities</button>
+    <button type="button" class="chip" data-quick-question="When does the Afternoon Book Circle meet?">Book circles</button>
+    {% if not widget %}<button type="button" class="chip" data-quick-question="Can I bring a friend?">Bringing a friend</button>{% endif %}
+  </div>
+  <form method="post" action="{% url 'assistant:chat' %}" class="chat-composer" data-chat-form data-endpoint="{% url 'assistant:ask' %}">
+    {% csrf_token %}
+    <div class="form-errors" role="alert" data-chat-errors {% if not form.errors %}hidden{% endif %}>{{ form.non_field_errors }}{{ form.question.errors }}</div>
+    <label for="{{ chat_id }}-question">Your question</label>
+    <div class="composer-row">
+      <textarea id="{{ chat_id }}-question" name="question" rows="2" maxlength="1000" required {% if form.question.errors %}aria-invalid="true"{% endif %} aria-describedby="{{ chat_id }}-help" placeholder="What's on your mind?" data-question-input>{% if not widget %}{{ form.question.value|default_if_none:"" }}{% endif %}</textarea>
+      <button class="button" type="submit" data-send>Send <span aria-hidden="true">↗</span></button>
+      <button class="button button-secondary" type="button" data-stop hidden>Stop</button>
+    </div>
+    <div class="composer-note"><p id="{{ chat_id }}-help">Up to 1,000 characters. No conversation history is saved.</p><span role="status" data-chat-status></span></div>
+    <a class="text-link" href="{% url 'core:help' %}">Help &amp; ways to talk to a person</a>
+  </form>
+</div>

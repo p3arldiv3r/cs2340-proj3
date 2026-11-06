@@ -1,0 +1,8 @@
+<a class="chat-launcher" href="{% url 'assistant:chat' %}" data-open-chat aria-haspopup="dialog" aria-controls="chat-popup" aria-expanded="false">
+  <span class="launcher-icon" aria-hidden="true">✧</span><span>Ask your assistant</span>
+</a>
+<dialog id="chat-popup" class="chat-popup" aria-labelledby="popup-title">
+  <div class="popup-heading"><div><span class="eyebrow">A little help, right here</span><h2 id="popup-title">Your assistant</h2></div><button type="button" class="icon-button" data-close-chat aria-label="Close assistant">×</button></div>
+  {% include "assistant/_chat_surface.html" with chat_id="popup" widget=True answer=None question="" form=None %}
+  <div class="popup-footer"><a href="{% url 'assistant:chat' %}">Open full-page assistant <span aria-hidden="true">↗</span></a></div>
+</dialog>

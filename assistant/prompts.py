@@ -1,15 +1,14 @@
-"""TODO (Developer: dynamically select or construct prompts based on the type
-of user question, e.g. factual lookup vs. explanation vs. creative).
-
-With no language model, a "prompt" here is a response template per question
-type (e.g. a factual lookup gives one short quoted answer; a recommendation
-lists a few options).
-"""
-
+"""Response styles independent of the answer-generation backend."""
+import re
 
 def classify_intent(question):
-    raise NotImplementedError
-
+    if re.search(r'\b(recommend|suggest|find|activities|programs|groups)\b', question.lower()):
+        return 'recommendation'
+    if re.search(r'\b(how|why|explain)\b', question.lower()):
+        return 'explanation'
+    return 'factual'
 
 def choose_template(intent):
-    raise NotImplementedError
+    return {'recommendation': 'Here are matching options from our sources.',
+            'explanation': 'Here is what our sources say.',
+            'factual': 'I found this information in our sources.'}.get(intent, 'Here is what our sources say.')

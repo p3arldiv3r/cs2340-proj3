@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Help{% endblock %}
+{% block content %}
+<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">A little guidance</p><h1>You're in the right place.</h1><p>Take a moment. Here are a few ways to get started.</p></div>
+<div class="home-grid"><section class="hero-card"><p class="eyebrow">Finding your way</p><h2>Start with a question.</h2><p>Use “Ask your assistant” at the bottom of any page, or open the full-page conversation.</p><p>Try “When does the Afternoon Book Circle meet?” Then open the sources beneath the reply to check the details.</p><a class="button" href="{% url 'assistant:chat' %}">Open your assistant ↗</a></section>
+<div class="secondary-stack"><section class="card"><p class="eyebrow">Make yourself comfortable</p><h2>Easier to read.</h2><p>Use the text-size buttons and high-contrast control at the top of the page. Your choices stay in this browser.</p></section><section class="resource-card"><p class="eyebrow">Human support</p><h2>Sometimes, a person helps.</h2><p>This demo does not have a live support team. For questions about a real program, contact its provider using the original source when one is available.</p></section></div></div>
+<section class="context-strip"><div><h2>Know what to expect.</h2><p>The assistant uses our available documents. It can miss a match and cannot verify local activities or provide medical advice. No conversation history is saved.</p></div></section>
+{% endblock %}
