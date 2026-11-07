@@ -1,0 +1,49 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{# Garden look for Django admin: shared tokens from garden.css, mapped onto admin variables in garden-admin.css. #}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} · Garden administration{% endblock %}
+
+{# Garden dark mode is not designed yet (DESIGN.md 3.1), so admin stays light. #}
+{% block dark-mode-vars %}{% endblock %}
+
+{% block extrastyle %}
+  <meta name="theme-color" content="#F3F6EE">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'core/garden.css' %}">
+  <link rel="stylesheet" href="{% static 'core/garden-admin.css' %}">
+  <script src="{% static 'core/garden.js' %}" defer></script>
+{% endblock %}
+
+{% block branding %}
+  <a class="brand" href="{% url 'core:home' %}" aria-label="Garden home"><span class="brand-mark" aria-hidden="true">❧</span> garden<span class="brand-dot" aria-hidden="true">.</span></a>
+  <div id="site-name"><a href="{% url 'admin:index' %}">Administration</a></div>
+{% endblock %}
+
+{% block nav-global %}
+  <div class="reading-controls" aria-label="Reading preferences">
+    <span class="control-label">Text size</span>
+    <div class="segmented" role="group" aria-label="Text size">
+      <button type="button" data-text-size="standard" aria-pressed="true" aria-label="Standard text size">A</button>
+      <button type="button" data-text-size="large" aria-pressed="false" aria-label="Large text size">A+</button>
+      <button type="button" data-text-size="largest" aria-pressed="false" aria-label="Largest text size">A++</button>
+    </div>
+    <div class="segmented segmented-words" role="group" aria-label="Color">
+      <button type="button" data-color="standard" aria-pressed="true">Standard</button>
+      <button type="button" data-color="high-contrast" aria-pressed="false">High contrast</button>
+    </div>
+  </div>
+  {% if user.is_active and user.is_staff %}
+  <nav class="staff-nav" aria-label="Staff navigation">
+    <a href="{% url 'core:home' %}">← Back to site</a>
+    <a href="{% url 'knowledge:manage' %}">Knowledge base</a>
+    <a href="{% url 'evaluation:runs' %}">Evaluation</a>
+    <a href="{% url 'monitoring:dashboard' %}">Monitoring</a>
+    <a href="{% url 'admin:index' %}" aria-current="page">Administration</a>
+  </nav>
+  {% endif %}
+{% endblock %}
+
+{% block footer %}<p class="footer-note">Garden · A place to begin, together.</p>{% endblock %}

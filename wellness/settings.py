@@ -94,6 +94,9 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Monitoring: answers slower than this (95th percentile) are flagged.
+ASSISTANT_LATENCY_TARGET_MS = int(os.environ.get("ASSISTANT_LATENCY_TARGET_MS", "2000"))
+
 
 STATIC_URL = "static/"
 

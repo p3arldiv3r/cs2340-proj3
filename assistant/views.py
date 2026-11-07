@@ -3,6 +3,8 @@ from dataclasses import asdict
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods, require_POST
+from monitoring.models import QueryLog
+from monitoring.services import timed_answer
 from .forms import QuestionForm
 from .rag import answer_question
 
@@ -17,7 +19,7 @@ def chat(request):
     if request.method == 'POST' and form.is_valid():
         question = form.cleaned_data['question']
         try:
-            answer = answer_question(question, user=request.user)
+            answer = timed_answer(answer_question, question, QueryLog.PAGE, user=request.user)
         except Exception:
             logger.exception('Question answering failed')
             form.add_error(None, 'We could not answer right now. Please try again shortly.')
@@ -32,7 +34,7 @@ def ask(request):
     if not form.is_valid():
         return JsonResponse({'error': 'Enter a question between 1 and 1,000 characters.'}, status=400)
     try:
-        answer = answer_question(form.cleaned_data['question'], user=request.user)
+        answer = timed_answer(answer_question, form.cleaned_data['question'], QueryLog.POPUP, user=request.user)
     except Exception:
         logger.exception('Question answering failed')
         return JsonResponse({'error': 'We could not answer right now. Please try again shortly.'}, status=503)

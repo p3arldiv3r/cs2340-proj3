@@ -3,6 +3,62 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">Staff workspace</p><h1>{{ title }}</h1><p>A place to understand how the assistant is working.</p></div>
-<section class="hero-card"><p class="eyebrow">Service health</p><h2>Room to keep improving.</h2><p>Usage and response-time reporting are planned for a future update. No usage metrics are collected or displayed here yet.</p><p>Application errors are available through the server logs.</p><a class="text-link" href="{% url 'assistant:chat' %}">Open the assistant →</a></section>
+<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">Staff workspace</p><h1>{{ title }}</h1><p>How quickly and reliably the assistant is answering. Question text is not recorded.</p></div>
+
+<nav class="interest-chips" aria-label="Reporting period">
+  {% for period in periods %}<a class="chip" href="?days={{ period }}" {% if period == summary.days %}aria-current="true"{% endif %}>Last {{ period }} day{{ period|pluralize }}</a>{% endfor %}
+</nav>
+
+{% if summary.total %}
+<section aria-labelledby="performance-heading">
+  <div class="section-heading"><h2 id="performance-heading">Performance</h2></div>
+  <p class="status-banner {% if summary.meets_target %}status-ok{% else %}status-warn{% endif %}" data-status="{% if summary.meets_target %}ok{% else %}slow{% endif %}">
+    {% if summary.meets_target %}Meeting the response-time target: 95% of answers took {{ summary.p95_ms }} ms or less (target {{ summary.target_ms }} ms).{% else %}Slower than target: 95th percentile is {{ summary.p95_ms }} ms (target {{ summary.target_ms }} ms).{% endif %}
+  </p>
+  <dl class="stat-grid">
+    <div class="card"><dt>Average response</dt><dd>{{ summary.avg_ms }} ms</dd></div>
+    <div class="card"><dt>Median response</dt><dd>{{ summary.median_ms }} ms</dd></div>
+    <div class="card"><dt>95th percentile</dt><dd>{{ summary.p95_ms }} ms</dd></div>
+    <div class="card"><dt>Slowest</dt><dd>{{ summary.max_ms }} ms</dd></div>
+    <div class="card"><dt>Over target</dt><dd>{{ summary.slow }}</dd></div>
+    <div class="card"><dt>Failures</dt><dd>{{ summary.failures }} <small>({% widthratio summary.failure_rate 1 100 %}%)</small></dd></div>
+  </dl>
+</section>
+
+<section aria-labelledby="usage-heading">
+  <div class="section-heading"><h2 id="usage-heading">Usage</h2></div>
+  <dl class="stat-grid">
+    <div class="card"><dt>Questions</dt><dd>{{ summary.total }}</dd></div>
+    <div class="card"><dt>Full-page chat</dt><dd>{{ summary.by_channel.page|default:0 }}</dd></div>
+    <div class="card"><dt>Popup</dt><dd>{{ summary.by_channel.popup|default:0 }}</dd></div>
+    <div class="card"><dt>No matching source</dt><dd>{{ summary.unanswered }}</dd></div>
+  </dl>
+  <div class="table-wrap">
+    <table class="data-table">
+      <caption>Questions per day</caption>
+      <thead><tr><th scope="col">Day</th><th scope="col">Questions</th></tr></thead>
+      <tbody>{% for row in summary.daily %}<tr><td>{{ row.day|date:"D, M j" }}</td><td>{{ row.count }}</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <div class="table-wrap">
+    <table class="data-table">
+      <caption>Most recent {{ summary.recent|length }} questions</caption>
+      <thead><tr><th scope="col">Time</th><th scope="col">Channel</th><th scope="col">Response time</th><th scope="col">Result</th></tr></thead>
+      <tbody>
+        {% for log in summary.recent %}
+        <tr>
+          <td>{{ log.created_at|date:"M j, g:i:s A" }}</td>
+          <td>{{ log.get_channel_display }}</td>
+          <td>{{ log.latency_ms }} ms</td>
+          <td>{% if not log.succeeded %}Failed ({{ log.error_type }}){% elif log.source_count %}Answered, {{ log.source_count }} source{{ log.source_count|pluralize }}{% else %}No matching source{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <a class="text-link" href="{% url 'admin:monitoring_querylog_changelist' %}">Full query log in administration →</a>
+</section>
+{% else %}
+<section class="hero-card"><p class="eyebrow">Service health</p><h2>No questions yet.</h2><p>No questions were asked in the last {{ summary.days }} day{{ summary.days|pluralize }}. Response times and failures appear here once people use the assistant.</p><a class="text-link" href="{% url 'assistant:chat' %}">Open the assistant →</a></section>
+{% endif %}
 {% endblock %}
