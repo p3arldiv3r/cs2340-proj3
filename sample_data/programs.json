@@ -5,7 +5,8 @@
     "description": "Gentle stretches done seated or standing next to a chair. Go at your own pace. Please check with your doctor before starting any exercise program.",
     "format": "Online",
     "time_of_day": "Morning",
-    "cost": "Free"
+    "cost": "Free",
+    "instructor": "Jordan Lee"
   },
   {
     "id": "prog-102",
