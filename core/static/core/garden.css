@@ -155,6 +155,22 @@ blockquote { margin: 12px 0; padding-left: 16px; border-left: 3px solid var(--br
 .chat-popup .chip { font-size: .8rem; padding: 8px 12px; }
 .popup-footer { border-top: 1px solid var(--border-soft); padding: 8px 24px; font-size: .8rem; flex-shrink: 0; }
 .popup-footer a { display: flex; justify-content: space-between; align-items: center; min-height: 48px; }
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(170px,1fr)); gap: 16px; margin: 0 0 24px; }
+.stat-grid .card { padding: 20px; }
+.stat-grid dt { font-size: .86rem; font-weight: 700; color: var(--text-secondary); }
+.stat-grid dd { margin: 4px 0 0; font-family: var(--font-heading); font-size: 1.6rem; }
+.stat-grid small { font-family: var(--font-body); font-size: .8rem; }
+.status-banner { padding: 16px 20px; border-radius: var(--radius-input); border-left: 6px solid var(--brand-primary); background: var(--bg-sage); font-weight: 700; }
+.status-warn { border-left-color: var(--status-error); background: var(--bg-plum); }
+.message-list { list-style: none; padding: 0; margin: 0 0 24px; display: grid; gap: 8px; }
+.interest-chips .chip[aria-current] { background: var(--brand-primary); color: white; }
+.table-wrap { overflow-x: auto; margin-bottom: 24px; }
+.data-table { width: 100%; border-collapse: collapse; background: var(--bg-surface); font-size: .9rem; }
+.data-table caption { text-align: left; font-weight: 700; padding: 8px 0; }
+.data-table th,.data-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); }
+.stacked-form { display: grid; gap: 12px; justify-items: start; }
+.stacked-form label { display: flex; gap: 10px; align-items: start; min-height: 32px; }
+.stacked-form input[type="checkbox"] { width: 22px; height: 22px; margin-top: 2px; flex-shrink: 0; }
 @media (max-width: 1100px) {
   .reading-controls { margin-left: auto; }
   .primary-nav { margin-left: auto; margin-right: 0; }

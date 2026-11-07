@@ -35,9 +35,10 @@ Question -> intent/template -> ranked retrieval -> extractive answer + cited evi
 - `core/` and shared templates: responsive Garden home, activities, help, and staff layouts; browser-local text size and contrast controls.
 - Every application page includes a bottom-right assistant launcher. Its native dialog uses the same chat component and CSRF-protected `/assistant/ask/` service as the full-page assistant. Escape/Close returns focus to the launcher; mobile uses an expanded panel above the page. The launcher links to the full-page assistant when JavaScript is unavailable.
 - `accounts/`: custom Django user. Chat does not require login or save conversation history.
-- `evaluation/`, `monitoring/`: future work; pages remain staff-only placeholders.
+- `monitoring/`: every chat question is logged (time, channel, response time, success, number of sources; never the question text). Staff see latency percentiles against `ASSISTANT_LATENCY_TARGET_MS` (default 2000), failures, and usage at `/monitoring/`.
+- `evaluation/`: future work; page remains a staff-only placeholder.
 
-Answers quote source text rather than synthesize new facts. Retrieval may miss paraphrases or misinterpret complex queries. Follow-up questions do not use conversation memory. Source documents and chunks are managed through the CLI and Django admin; the knowledge management page remains a placeholder.
+Answers quote source text rather than synthesize new facts. Retrieval may miss paraphrases or misinterpret complex queries. Follow-up questions do not use conversation memory. Sources are added with the CLI. Staff can clear or reload the whole knowledge base at `/knowledge/`; a failed reload keeps the existing documents.
 
 ## Add data
 
