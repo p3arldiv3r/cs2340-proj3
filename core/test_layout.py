@@ -31,3 +31,21 @@ class LayoutTests(TestCase):
         response = self.client.get(reverse('assistant:chat'), {'question': '<script>alert(1)</script>'})
         self.assertContains(response, '&lt;script&gt;alert(1)&lt;/script&gt;')
         self.assertNotContains(response, '<script>alert(1)</script>')
+
+    def test_admin_uses_garden_theme(self):
+        user = get_user_model().objects.create_superuser(username='admin', password='x')
+        self.client.force_login(user)
+        for url in [reverse('admin:index'), reverse('admin:monitoring_querylog_changelist')]:
+            with self.subTest(url=url):
+                response = self.client.get(url)
+                self.assertContains(response, 'core/garden.css')
+                self.assertContains(response, 'core/garden-admin.css')
+                self.assertContains(response, 'data-contrast')
+                self.assertContains(response, reverse('monitoring:dashboard'))
+                self.assertNotContains(response, 'admin/css/dark_mode.css')
+                self.assertNotContains(response, 'theme-toggle')
+
+    def test_admin_login_uses_garden_theme(self):
+        response = self.client.get(reverse('admin:login'))
+        self.assertContains(response, 'core/garden-admin.css')
+        self.assertNotContains(response, 'Staff navigation')
