@@ -30,7 +30,10 @@
       <button type="button" data-text-size="large" aria-pressed="false" aria-label="Large text size">A+</button>
       <button type="button" data-text-size="largest" aria-pressed="false" aria-label="Largest text size">A++</button>
     </div>
-    <button class="contrast-control" type="button" data-contrast aria-pressed="false">High contrast</button>
+    <div class="segmented segmented-words" role="group" aria-label="Color">
+      <button type="button" data-color="standard" aria-pressed="true">Standard</button>
+      <button type="button" data-color="high-contrast" aria-pressed="false">High contrast</button>
+    </div>
   </div>
   {% if user.is_active and user.is_staff %}
   <nav class="staff-nav" aria-label="Staff navigation">

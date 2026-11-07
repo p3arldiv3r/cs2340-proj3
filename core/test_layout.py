@@ -11,7 +11,7 @@ class LayoutTests(TestCase):
                 self.assertContains(response, 'id="chat-popup"', count=1)
                 self.assertContains(response, 'data-open-chat', count=1)
                 self.assertContains(response, 'data-text-size="largest"')
-                self.assertContains(response, 'data-contrast')
+                self.assertContains(response, 'data-color="high-contrast"')
                 self.assertContains(response, 'name="csrfmiddlewaretoken"')
                 self.assertContains(response, 'core/garden.js')
                 self.assertNotContains(response, 'Placeholder page')
@@ -27,6 +27,17 @@ class LayoutTests(TestCase):
         for name in ['knowledge:manage', 'evaluation:runs', 'monitoring:dashboard']:
             self.assertContains(self.client.get(reverse(name)), 'id="chat-popup"', count=1)
 
+    def test_staff_menu_only_for_staff(self):
+        self.assertNotContains(self.client.get(reverse('core:home')), 'data-staff-menu')
+        self.client.force_login(get_user_model().objects.create_user(username='visitor'))
+        self.assertNotContains(self.client.get(reverse('core:home')), 'data-staff-menu')
+        self.client.force_login(get_user_model().objects.create_user(username='staff', is_staff=True))
+        response = self.client.get(reverse('monitoring:dashboard'))
+        self.assertContains(response, 'data-staff-menu', count=1)
+        for name in ['knowledge:manage', 'evaluation:runs', 'admin:index']:
+            self.assertContains(response, reverse(name))
+        self.assertContains(response, f'href="{reverse("monitoring:dashboard")}" aria-current="page"')
+
     def test_prefilled_activity_question_is_escaped(self):
         response = self.client.get(reverse('assistant:chat'), {'question': '<script>alert(1)</script>'})
         self.assertContains(response, '&lt;script&gt;alert(1)&lt;/script&gt;')
@@ -40,7 +51,7 @@ class LayoutTests(TestCase):
                 response = self.client.get(url)
                 self.assertContains(response, 'core/garden.css')
                 self.assertContains(response, 'core/garden-admin.css')
-                self.assertContains(response, 'data-contrast')
+                self.assertContains(response, 'data-color="high-contrast"')
                 self.assertContains(response, reverse('monitoring:dashboard'))
                 self.assertNotContains(response, 'admin/css/dark_mode.css')
                 self.assertNotContains(response, 'theme-toggle')

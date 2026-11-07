@@ -29,23 +29,31 @@
           <button type="button" data-text-size="large" aria-pressed="false" aria-label="Large text size">A+</button>
           <button type="button" data-text-size="largest" aria-pressed="false" aria-label="Largest text size">A++</button>
         </div>
-        <button class="contrast-control" type="button" data-contrast aria-pressed="false">High contrast</button>
+        <div class="segmented segmented-words" role="group" aria-label="Color">
+          <button type="button" data-color="standard" aria-pressed="true">Standard</button>
+          <button type="button" data-color="high-contrast" aria-pressed="false">High contrast</button>
+        </div>
       </div>
     </div>
-    {% if request.user.is_staff %}
-    <nav class="staff-nav" aria-label="Staff navigation">
-      <a href="{% url 'knowledge:manage' %}">Knowledge base</a>
-      <a href="{% url 'evaluation:runs' %}">Evaluation</a>
-      <a href="{% url 'monitoring:dashboard' %}">Monitoring</a>
-      <a href="{% url 'admin:index' %}">Administration</a>
-    </nav>
-    {% endif %}
   </header>
   <main id="main" class="page-shell">{% block content %}{% endblock %}</main>
   <footer class="site-footer">
     <div class="footer-inner"><p><strong>A little connection goes a long way.</strong><br>Take your next step at your own pace.</p><p>Need to talk to someone now?<br>Call or text <a href="tel:988">988</a>, any time.</p></div>
     <p class="footer-note">Garden · A place to begin, together.</p>
   </footer>
+  {% if request.user.is_staff %}
+  <details class="staff-menu" data-staff-menu>
+    <summary><span aria-hidden="true">⚙</span> Staff tools</summary>
+    <nav aria-label="Staff navigation">
+      <ul>
+        <li><a href="{% url 'knowledge:manage' %}" {% if request.resolver_match.namespace == 'knowledge' %}aria-current="page"{% endif %}>Knowledge base</a></li>
+        <li><a href="{% url 'evaluation:runs' %}" {% if request.resolver_match.namespace == 'evaluation' %}aria-current="page"{% endif %}>Evaluation</a></li>
+        <li><a href="{% url 'monitoring:dashboard' %}" {% if request.resolver_match.namespace == 'monitoring' %}aria-current="page"{% endif %}>Monitoring</a></li>
+        <li><a href="{% url 'admin:index' %}">Administration</a></li>
+      </ul>
+    </nav>
+  </details>
+  {% endif %}
   {% include "assistant/_widget.html" %}
 </body>
 </html>

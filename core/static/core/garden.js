@@ -11,9 +11,13 @@
       if (button.tagName === 'BUTTON') button.setAttribute('aria-pressed', String(button.dataset.textSize === root.dataset.textSize));
     });
   }
+  // The Color buttons use data-color, not data-contrast: <html> carries
+  // data-contrast, so a [data-contrast] selector would match the whole page.
   function setContrast(enabled) {
     root.dataset.contrast = String(enabled);
-    document.querySelector('[data-contrast]')?.setAttribute('aria-pressed', String(enabled));
+    document.querySelectorAll('button[data-color]').forEach(button => {
+      button.setAttribute('aria-pressed', String((button.dataset.color === 'high-contrast') === enabled));
+    });
   }
   setTextSize(readPreference('garden.textSize'));
   setContrast(readPreference('garden.contrast') === 'true');
@@ -21,10 +25,22 @@
     setTextSize(button.dataset.textSize);
     savePreference('garden.textSize', root.dataset.textSize);
   }));
-  document.querySelector('[data-contrast]')?.addEventListener('click', () => {
-    setContrast(root.dataset.contrast !== 'true');
+  document.querySelectorAll('button[data-color]').forEach(button => button.addEventListener('click', () => {
+    setContrast(button.dataset.color === 'high-contrast');
     savePreference('garden.contrast', root.dataset.contrast);
-  });
+  }));
+
+  const staffMenu = document.querySelector('details[data-staff-menu]');
+  if (staffMenu) {
+    document.addEventListener('click', event => {
+      if (staffMenu.open && !staffMenu.contains(event.target)) staffMenu.open = false;
+    });
+    staffMenu.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || !staffMenu.open) return;
+      staffMenu.open = false;
+      staffMenu.querySelector('summary').focus();
+    });
+  }
 
   const popup = document.querySelector('#chat-popup');
   let opener;
