@@ -1,0 +1,17 @@
+<details class="eval-result">
+  <summary>
+    <span class="eval-question">{{ result.question }}</span>
+    <span class="eval-result-outcome">
+      <span class="eval-status {% if result.passed %}ok{% else %}bad{% endif %}">{% if result.passed %}✓ Correct{% else %}✕ Incorrect{% endif %}</span>
+      <span class="eval-detail-toggle">Details</span>
+    </span>
+  </summary>
+  <div class="eval-detail-body">
+    <dl>
+      <div><dt>Expected</dt><dd>{{ result.expected }}</dd></div>
+      <div><dt>Actual chatbot answer</dt><dd class="eval-actual">{{ result.actual|linebreaksbr }}</dd></div>
+      <div><dt>Cited source IDs</dt><dd>{{ result.source_ids|join:", "|default:"None" }}</dd></div>
+      {% if result.feedback %}<div><dt>Why it failed</dt><dd>{{ result.feedback }}</dd></div>{% endif %}
+    </dl>
+  </div>
+</details>

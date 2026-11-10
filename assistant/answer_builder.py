@@ -112,6 +112,44 @@ def _metadata_answer(question, retrieved):
     return None
 
 
+def _schedule_answer(question, retrieved):
+    """Answer meeting-time questions using the actual schedule sentence.
+
+    Markdown headings can score highly for a named group while omitting the
+    meeting time. Prefer a complete schedule sentence from the matched source.
+    """
+    if not re.search(r"\b(?:when|what time|what day)\b", question, re.I):
+        return None
+    if not re.search(r"\b(?:meet|meets|meeting|start|starts|happen|held)\b", question, re.I):
+        return None
+
+    normalized_question = " ".join(question.casefold().split())
+    for passage in retrieved:
+        document = passage.chunk.document
+        # Markdown titles may have a descriptive subtitle after a colon.
+        activity_name = document.title.split(":", 1)[0].strip()
+        if activity_name.casefold() not in normalized_question:
+            continue
+        # A line-wrapped sentence is still one sentence. Use the full original
+        # document to avoid losing the time to a heading or paragraph break.
+        text = " ".join(
+            line.strip() for line in document.text.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        )
+        sentences = re.split(r"(?<=[.!?])\s+", text)
+        for sentence in sentences:
+            if not re.search(r"\b(?:meets?|takes place|held|scheduled)\b", sentence, re.I):
+                continue
+            if not re.search(r"\b(?:\d{1,2}:\d{2}|\d{1,2}\s*(?:am|pm)|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b", sentence, re.I):
+                continue
+            return Answer(
+                f"{sentence.strip()} [1]",
+                (_citation(document, 1, sentence.strip()),),
+                intent='factual',
+            )
+    return None
+
+
 def _metadata_facts(document):
     """Present verified activity details without technical field names."""
     return ' · '.join(
@@ -149,6 +187,9 @@ def build_answer(question, retrieved, plan):
         return Answer(NO_ANSWER + ' Try asking about an activity or group.', intent=plan.intent)
 
     if plan.intent == 'factual':
+        schedule = _schedule_answer(question, retrieved)
+        if schedule is not None:
+            return schedule
         direct_fact = _metadata_answer(question, retrieved)
         if direct_fact is not None:
             return direct_fact

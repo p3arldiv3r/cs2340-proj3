@@ -1,8 +1,108 @@
 {% extends "base.html" %}
-
 {% block title %}{{ title }}{% endblock %}
-
 {% block content %}
-<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">Staff workspace</p><h1>{{ title }}</h1><p>Make sure each answer earns your trust.</p></div>
-<section class="hero-card"><p class="eyebrow">Quality checks</p><h2>A clearer picture, coming soon.</h2><p>An evaluation dashboard is planned for comparing answers with known questions and supporting documents.</p><p>For now, run the Django test suite to check retrieval, citations, and the chat experience.</p><a class="text-link" href="{% url 'assistant:chat' %}">Try a question in the assistant →</a></section>
+<style>
+/* US9 only: scoped evaluation styles, no changes to public Garden pages. */
+.eval-page { max-width: 1184px; margin: auto; }
+.eval-grid { display:grid; grid-template-columns:minmax(0,1.7fr) minmax(290px,1fr); gap:24px; align-items:start; }
+.eval-col { display:grid; gap:24px; min-width:0; }
+.eval-panel { background:var(--bg-surface); border:1px solid var(--border-soft); border-radius:24px; padding:26px 30px; box-shadow:0 4px 14px #1d2b2009; }
+.eval-panel h2 { font-size:1.35rem; margin:0 0 12px; }
+.eval-panel p { color:var(--text-secondary); }
+.eval-action { display:flex; align-items:center; gap:20px; justify-content:space-between; }
+.eval-action-copy h2 { margin-bottom:8px; }
+.eval-action-copy p { margin:0; }
+.eval-run-btn { background:var(--brand-primary); color:white; border:0; border-radius:14px; padding:14px 22px; font-weight:800; min-height:52px; white-space:nowrap; }
+.eval-run-btn:hover { background:var(--brand-primary-hover); }
+/* Each result expands across the entire panel, not a narrow table cell. */
+.eval-results-head { display:grid; grid-template-columns:minmax(0,1fr) 126px; gap:16px; background:var(--bg-sage); padding:12px 14px; border-radius:10px; font-weight:700; font-size:.88rem; }
+.eval-result { border-bottom:1px solid var(--border-soft); }
+.eval-result > summary { list-style:none; display:grid; grid-template-columns:minmax(0,1fr) 126px; gap:16px; align-items:start; padding:16px 14px; cursor:pointer; }
+.eval-result > summary::-webkit-details-marker { display:none; }
+.eval-result > summary:hover, .eval-result[open] > summary { background:var(--bg-sage); }
+.eval-question { min-width:0; overflow-wrap:break-word; }
+.eval-result-outcome { display:grid; gap:6px; justify-items:start; font-size:.85rem; }
+.eval-status { font-weight:700; }
+.eval-status.ok { color:var(--brand-primary); }
+.eval-status.bad { color:var(--status-error); }
+.eval-detail-toggle { color:var(--brand-primary); text-decoration:underline; font-size:.82rem; }
+.eval-detail-toggle:before { content:'▸ '; }
+.eval-result[open] .eval-detail-toggle:before { content:'▾ '; }
+.eval-detail-body { padding:14px 18px 20px; margin:0 0 12px; background:var(--bg-sage); border-radius:12px; overflow-wrap:anywhere; min-width:0; }
+.eval-detail-body dl { margin:0; display:grid; gap:13px; }
+.eval-detail-body dt { font-weight:700; margin-bottom:4px; }
+.eval-detail-body dd { margin:0; white-space:normal; line-height:1.55; }
+.eval-detail-body .eval-actual { white-space:normal; }
+@media(max-width:460px) { .eval-results-head,.eval-result > summary { grid-template-columns:minmax(0,1fr) 105px; gap:8px; padding-left:8px; padding-right:8px; } }
+.eval-score-wrap { display:flex; align-items:center; gap:22px; margin:24px 0 0; }
+.eval-ring { width:155px; aspect-ratio:1; flex:none; border-radius:50%; display:grid; place-items:center; background:conic-gradient(var(--brand-primary) var(--score),var(--bg-sage) 0); position:relative; }
+.eval-ring:before { content:""; position:absolute; inset:13px; border-radius:50%; background:var(--bg-surface); }
+.eval-ring-label { position:relative; text-align:center; line-height:1.25; }
+.eval-ring-label strong { display:block; font:600 1.95rem var(--font-heading); }
+.eval-ring-label span { font-size:.8rem; }
+.eval-counts { flex:1; border-left:1px solid var(--border-soft); padding-left:20px; }
+.eval-counts p { margin:0; padding:12px 0; font-size:.9rem; }
+.eval-counts p + p { border-top:1px solid var(--border-soft); }
+.eval-help { background:var(--bg-plum); border-color:transparent; }
+.eval-help p { margin-bottom:0; }
+.eval-flash { margin-bottom:16px; border-radius:12px; padding:14px 18px; background:var(--bg-sage); border-left:5px solid var(--brand-primary); }
+.eval-flash.error { background:var(--bg-plum); border-left-color:var(--status-error); }
+.eval-empty { text-align:center; padding:16px 0; }
+.eval-more { margin-top:18px; }
+.eval-more > summary { font-weight:700; color:var(--brand-primary); cursor:pointer; text-decoration:underline; }
+.eval-empty-note { font-size:.8rem; color:var(--text-secondary); margin-top:18px; }
+@media (max-width:900px) { .eval-grid { grid-template-columns:1fr; } }
+@media (max-width:600px) { .eval-panel { padding:20px; } .eval-action { align-items:stretch; flex-direction:column; } .eval-run-btn { width:100%; } .eval-score-wrap { flex-direction:column; } .eval-counts { border:0; padding:0; width:100%; } .eval-ring { width:145px; } }
+</style>
+<div class="eval-page">
+  <div class="page-heading">
+    <a class="back-link" href="{% url 'core:home' %}">← Back to home</a>
+    <p class="eyebrow">Chatbot testing · Staff only</p>
+    <h1>Response Evaluation</h1>
+    <p>Test the assistant with known questions to check its accuracy.</p>
+  </div>
+  {% for message in messages %}<div class="eval-flash {% if message.tags == 'error' %}error{% endif %}" role="status">{{ message }}</div>{% endfor %}
+  <div class="eval-grid">
+    <div class="eval-col">
+      <section class="eval-panel eval-action" aria-labelledby="eval-run-heading">
+        <div class="eval-action-copy"><h2 id="eval-run-heading">Run an Evaluation</h2><p>Checks the assistant’s answers against expected results.</p></div>
+        <form method="post" action="{% url 'evaluation:execute' %}">{% csrf_token %}<button class="eval-run-btn" type="submit">▶ &nbsp; Run Test</button></form>
+      </section>
+      <section class="eval-panel" aria-labelledby="eval-results-heading">
+        <h2 id="eval-results-heading">Recent Results</h2>
+        {% if latest %}
+          <div class="eval-results-head"><span>Test Question</span><span>Result</span></div>
+          {% for result in recent_results %}
+            {% include "evaluation/_result.html" %}
+          {% endfor %}
+          {% if results|length > 5 %}
+            <details class="eval-more"><summary>View all {{ latest.total }} test results</summary>
+              {% for result in results %}
+                {% if forloop.counter > 5 %}{% include "evaluation/_result.html" %}{% endif %}
+              {% endfor %}
+            </details>
+          {% endif %}
+        {% else %}
+          <div class="eval-empty"><p>No results yet.</p><p>Run an evaluation to see how the assistant performs.</p></div>
+        {% endif %}
+      </section>
+    </div>
+    <aside class="eval-col" aria-label="Evaluation overview">
+      <section class="eval-panel" aria-labelledby="eval-latest-heading">
+        <h2 id="eval-latest-heading">Latest Evaluation</h2>
+        {% if latest %}
+          <p>Run: {{ latest.created_at|date:"M j, Y \a\t g:i A" }}</p>
+          <div class="eval-score-wrap">
+            <div class="eval-ring" style="--score:{{ latest.accuracy }}%" role="img" aria-label="{{ latest.accuracy }} percent of evaluation questions passed"><div class="eval-ring-label"><strong>{{ latest.accuracy }}%</strong><span>Accuracy</span></div></div>
+            <div class="eval-counts"><p><span class="eval-status ok">✓</span> {{ latest.passed }} of {{ latest.total }} Correct</p><p><span class="eval-status bad">✕</span> {{ latest.failed }} Incorrect</p></div>
+          </div>
+          <p class="eval-empty-note">Accuracy is the percentage of predefined checks passed, including required source citations.</p>
+        {% else %}
+          <p>No evaluations yet.</p><p>Run a test to see the latest score.</p>
+        {% endif %}
+      </section>
+      <section class="eval-panel eval-help" aria-labelledby="eval-help-heading"><h2 id="eval-help-heading">ⓘ &nbsp; What is this?</h2><p>We test the assistant with known questions to check that its answers match our sources.</p></section>
+    </aside>
+  </div>
+</div>
 {% endblock %}
