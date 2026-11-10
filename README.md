@@ -22,7 +22,7 @@ Open http://127.0.0.1:8000/assistant/. Try “What happens at Chair Yoga?” or 
 
 ```text
 URL/file -> ingestion -> RawDocument -> preprocessing -> Source/Document/Chunk storage
-Question -> intent/template -> ranked retrieval -> extractive answer + cited evidence
+Question -> intent-specific prompt plan -> ranked retrieval -> grounded response + citations
 ```
 
 - `knowledge/ingestion/`: web pages, TXT, Markdown, CSV, JSON, and saved HTML.
@@ -30,6 +30,8 @@ Question -> intent/template -> ranked retrieval -> extractive answer + cited evi
 - `knowledge/pipeline.py`: atomic per-source replacement; the ingest command persists data.
 - `knowledge/retrieval.py`: small-corpus lexical ranking, synonyms, and supported metadata constraints.
 - `assistant/rag.py`: application entry point.
+- `assistant/prompts.py`: US8 intent detection and three executable response plans (facts, explanations, suggestions). The extractive backend applies different evidence limits and formats without calling an LLM.
+- `assistant/test_prompts.py`: US8 acceptance tests for intent classification, grounded results, and the webpage/popup response.
 - `assistant/answer_builder.py`: structured Answer/Citation results; separate from the web UI for a future LLM upgrade.
 - `assistant/views.py` and templates: public question form, answers, expandable evidence and original-source links.
 - `core/` and shared templates: responsive Garden home, activities, help, and staff layouts; browser-local text size and contrast controls.
@@ -38,7 +40,7 @@ Question -> intent/template -> ranked retrieval -> extractive answer + cited evi
 - `monitoring/`: every chat question is logged (time, channel, response time, success, number of sources; never the question text). Staff see latency percentiles against `ASSISTANT_LATENCY_TARGET_MS` (default 2000), failures, and usage at `/monitoring/`.
 - `evaluation/`: future work; page remains a staff-only placeholder.
 
-Answers quote source text rather than synthesize new facts. Retrieval may miss paraphrases or misinterpret complex queries. Follow-up questions do not use conversation memory. Sources are added with the CLI. Staff can clear or reload the whole knowledge base at `/knowledge/`; a failed reload keeps the existing documents.
+Answers quote source text rather than synthesize new facts. Activity suggestions display up to two compact cards, with metadata tags and a linkable supporting source; FAQs and articles are never presented as activities. The two chats share the same response logic. Retrieval may miss paraphrases or misinterpret complex queries. Follow-up questions do not use conversation memory. Sources are added with the CLI. Staff can clear or reload the whole knowledge base at `/knowledge/`; a failed reload keeps the existing documents.
 
 ## Add data
 

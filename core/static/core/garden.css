@@ -238,3 +238,49 @@ blockquote { margin: 12px 0; padding-left: 16px; border-left: 3px solid var(--br
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+/* US8: compact, source-backed suggestions and clear response styles.
+   Scoped to assistant components; no changes to other Garden pages. */
+.intent-pill { display: inline-flex; width: fit-content; margin: 0 0 12px;
+  padding: 5px 14px; border-radius: var(--radius-pill); background: var(--bg-surface);
+  border: 1px solid var(--border-soft); color: var(--brand-primary);
+  font-size: .8rem; font-weight: 800; }
+.recommendation-list { display: grid; gap: 12px; }
+.recommendation-card { border: 1px solid var(--border-soft); border-radius: var(--radius-input);
+  padding: 16px; background: var(--bg-surface); }
+.recommendation-card h3 { margin: 0 0 8px; font-size: 1.2rem; }
+.recommendation-card p { margin: 8px 0 0; font-size: .9rem; line-height: 1.45; }
+.recommendation-citation { font: 700 .75rem/1 var(--font-body); color: var(--brand-primary); }
+.recommendation-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.recommendation-tag { padding: 4px 12px; background: var(--bg-sage);
+  border-radius: var(--radius-pill); color: var(--text-primary);
+  font-size: .75rem; font-weight: 700; }
+.answer-types { list-style: none; display: grid; gap: 0; margin: 12px 0 0; padding: 0; }
+.answer-types li { display: flex; align-items: center; gap: 12px; padding: 16px 0;
+  border-bottom: 1px solid var(--border-soft); font-size: .86rem; }
+.answer-types li:last-child { border-bottom: 0; padding-bottom: 0; }
+.answer-types .answer-type-name { flex: 0 0 44%; padding: 8px 12px;
+  border-radius: var(--radius-input); color: var(--brand-primary);
+  background: var(--bg-sage); font-weight: 800; }
+.assistant-privacy { background: var(--bg-surface); color: var(--text-primary);
+  border: 1px solid var(--border-soft); }
+@media (max-width: 599px) {
+  .recommendation-card { padding: 12px; }
+  .answer-types li { flex-wrap: wrap; }
+  .answer-types .answer-type-name { flex-basis: auto; }
+}
+
+/* US8 visual polish (applies only to the full assistant page). */
+.assistant-layout .answer-types { list-style: none; padding-left: 0; margin: 12px 0 0; }
+.assistant-layout .answer-types li { list-style: none; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border-soft); }
+.assistant-layout .answer-types li::marker { content: ''; }
+.assistant-layout .answer-type-name { flex: 0 0 46%; min-width: 0; display: inline-flex; align-items: center; justify-content: flex-start; padding: 12px; border-radius: var(--radius-input); background: var(--bg-sage); }
+.assistant-layout .answer-types li > span:last-child { font-size: .8rem; line-height: 1.35; color: var(--text-secondary); }
+.assistant-layout .message-assistant:has(.recommendation-list) { background: transparent; padding: 0; width: 100%; }
+.assistant-layout .recommendation-card { background: var(--bg-surface); border-radius: 18px; padding: 18px; }
+.assistant-layout .recommendation-card h3 { font-family: var(--font-heading); color: var(--brand-primary); font-size: 1.2rem; }
+.assistant-layout .recommendation-card p { color: var(--text-secondary); margin-bottom: 0; }
+.assistant-layout .recommendation-list + .source-list { background: var(--bg-sage); border: 0; border-radius: 18px; padding: 14px 16px; margin-top: 14px; }
+.assistant-layout .recommendation-list + .source-list .source-detail { background: var(--bg-surface); border: 1px solid var(--border-soft); border-radius: 10px; padding: 0 12px; }
+.assistant-layout .recommendation-list + .source-list summary { padding: 10px 0; }
+@media (max-width: 599px) { .assistant-layout .answer-types li { flex-wrap: wrap; } .assistant-layout .answer-type-name { flex-basis: 100%; } }

@@ -1,0 +1,21 @@
+{% if answer.sources %}
+<p class="intent-pill">{% if answer.intent == 'recommendation' %}Suggestions{% elif answer.intent == 'explanation' %}Explaining{% else %}Facts{% endif %}</p>
+{% endif %}
+{% if answer.recommendations %}
+<div class="recommendation-list" aria-label="Suggested activities">
+  {% for activity in answer.recommendations %}
+  <article class="recommendation-card">
+    <h3>{{ activity.title }} <span class="recommendation-citation">[{{ activity.source_number }}]</span></h3>
+    {% if activity.tags %}
+    <div class="recommendation-tags" aria-label="Activity details">
+      {% for tag in activity.tags %}<span class="recommendation-tag">{{ tag }}</span>{% endfor %}
+    </div>
+    {% endif %}
+    <p>{{ activity.description }}</p>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="answer-copy">{{ answer.text|linebreaksbr }}</div>
+{% endif %}
+{% include "assistant/_sources.html" %}
