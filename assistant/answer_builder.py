@@ -1,7 +1,8 @@
-"""Extractive generation; citations identify only evidence used in the reply."""
+"""Evidence-only answers with intent-specific structure and checkable citations."""
 import re
 from dataclasses import dataclass
 from knowledge.retrieval import terms
+
 
 @dataclass(frozen=True)
 class Citation:
@@ -12,67 +13,194 @@ class Citation:
     external_id: str
     excerpt: str
 
+
+@dataclass(frozen=True)
+class Recommendation:
+    title: str
+    description: str
+    tags: tuple
+    source_number: int
+
+
 @dataclass(frozen=True)
 class Answer:
     text: str
     sources: tuple = ()
+    intent: str = 'factual'
+    recommendations: tuple = ()
+
 
 NO_ANSWER = "I couldn't find an answer in our sources."
-
 INSTRUCTOR_QUESTION = re.compile(
-    r"^who\s+(?:teaches|leads|instructs)\s+(.+?)[?!.]*$",
-    re.IGNORECASE,
+    r"^who\s+(?:teaches|leads|instructs)\s+(.+?)[?!.]*$", re.IGNORECASE,
 )
 
 
+def _citation(document, number, excerpt):
+    return Citation(
+        number=number,
+        document_id=document.pk,
+        title=document.title,
+        url=document.public_url,
+        external_id=document.external_id,
+        excerpt=excerpt,
+    )
+
+
+def _best_sentences(question, text, count):
+    """Select relevant extractive sentences without adding unsupported claims."""
+    sentences = [s.strip() for s in re.split(r'(?<=[.!?])\s+|\n\n', text) if s.strip()]
+    if not sentences:
+        return ''
+    query = set(terms(question))
+    ranked = sorted(
+        range(len(sentences)),
+        key=lambda i: (-len(query & set(terms(sentences[i]))), i),
+    )[:count]
+    return ' '.join(sentences[i] for i in sorted(ranked))
+
+
 def answer_instructor_question(activity_name, retrieved):
-    """Answer from the named activity's instructor field."""
+    """Answer from a matching activity's instructor metadata, not a guess."""
     for passage in retrieved:
         document = passage.chunk.document
         if document.title.strip().casefold() != activity_name.casefold():
             continue
-
-        instructor = document.metadata.get("instructor")
+        instructor = document.metadata.get('instructor')
         if isinstance(instructor, str) and instructor.strip():
             instructor = instructor.strip()
             return Answer(
-                f"{document.title} is taught by {instructor}. [1]",
-                (Citation(
-                    number=1,
-                    document_id=document.pk,
-                    title=document.title,
-                    url=document.public_url,
-                    external_id=document.external_id,
-                    excerpt=f"Instructor: {instructor}",
-                ),),
+                f'{document.title} is taught by {instructor}. [1]',
+                (_citation(document, 1, f'Instructor: {instructor}'),),
             )
-
     return Answer("I couldn't find who teaches that activity in our sources.")
 
-def build_answer(question, retrieved, template):
+
+
+def _metadata_answer(question, retrieved):
+    """Answer a named activity's simple factual fields, without guessing.
+
+    Structured fields are more reliable than picking unrelated description
+    sentences when a user asks whether an activity is free or online.
+    """
+    query = question.casefold()
+    for passage in retrieved:
+        document = passage.chunk.document
+        if document.title.casefold() not in query:
+            continue
+        metadata = document.metadata
+        fact = excerpt = None
+        if re.search(r'\b(free|cost|price|fee|how much)\b', query) and metadata.get('cost'):
+            cost = str(metadata['cost'])
+            if re.search(r'\bfree\b', query) and cost.casefold() != 'free':
+                fact = f'No. {document.title} costs {cost}.'
+            elif cost.casefold() == 'free':
+                fact = f'{document.title} is free.'
+            else:
+                fact = f'{document.title} costs {cost}.'
+            excerpt = f'Cost: {cost}'
+        elif re.search(r'\b(online|in person|virtual|format)\b', query) and metadata.get('format'):
+            format_value = str(metadata['format'])
+            fact = f'{document.title} is listed as {format_value.lower()}.'
+            excerpt = f'Format: {format_value}'
+        elif re.search(r'\b(morning|afternoon|evening|time of day)\b', query) and metadata.get('time_of_day'):
+            time_value = str(metadata['time_of_day'])
+            fact = f'{document.title} is listed for the {time_value.lower()}.'
+            excerpt = f'Time of day: {time_value}'
+        if fact:
+            return Answer(f'{fact} [1]', (_citation(document, 1, excerpt),))
+    return None
+
+
+def _metadata_facts(document):
+    """Present verified activity details without technical field names."""
+    return ' · '.join(
+        str(document.metadata[key])
+        for key in ('format', 'time_of_day', 'cost')
+        if document.metadata.get(key)
+    )
+
+
+def _is_activity(document):
+    """Cards only for curated program records; articles/FAQs remain plain text."""
+    return any(key in document.metadata for key in ('format', 'time_of_day', 'cost'))
+
+
+def _recommendation_tags(document):
+    return tuple(
+        str(document.metadata[key])
+        for key in ('format', 'time_of_day', 'cost')
+        if document.metadata.get(key)
+    )
+
+
+def build_answer(question, retrieved, plan):
+    """Apply the selected plan to the same grounded retrieval results.
+
+    Factual: one short extract. Explanation: up to two richer extracts.
+    Recommendation: up to two compact program cards, if program data exists.
+    All answers cite *only* the documents used in the displayed response.
+    """
     instructor_question = INSTRUCTOR_QUESTION.fullmatch(question.strip())
     if instructor_question:
-        return answer_instructor_question(
-            instructor_question.group(1).strip(), retrieved
-        )
+        return answer_instructor_question(instructor_question.group(1).strip(), retrieved)
 
     if not retrieved:
-        return Answer(
-            NO_ANSWER
-            + " Try different words or ask another question about social wellness."
-        )
-    citations, sections, seen = [], [], set()
-    query = set(terms(question))
+        return Answer(NO_ANSWER + ' Try asking about an activity or group.', intent=plan.intent)
+
+    if plan.intent == 'factual':
+        direct_fact = _metadata_answer(question, retrieved)
+        if direct_fact is not None:
+            return direct_fact
+
+    # A recommendation must not turn an FAQ or a research article into an
+    # "activity". If no curated activities match, present the evidence as text.
+    if plan.intent == 'recommendation':
+        activity_passages = [p for p in retrieved if _is_activity(p.chunk.document)]
+        if activity_passages:
+            seen, citations, recommendations, lines = set(), [], [], []
+            for passage in activity_passages:
+                document = passage.chunk.document
+                if document.pk in seen:
+                    continue
+                seen.add(document.pk)
+                excerpt = _best_sentences(question, passage.chunk.text, 1)
+                if not excerpt:
+                    continue
+                number = len(citations) + 1
+                citations.append(_citation(document, number, excerpt))
+                tags = _recommendation_tags(document)
+                recommendations.append(Recommendation(document.title, excerpt, tags, number))
+                details = '; '.join(tags)
+                lines.append(f'{document.title} [{number}]\n{excerpt}' + (f'\n{details}' if details else ''))
+                if len(citations) >= plan.max_sources:
+                    break
+            if recommendations:
+                return Answer(
+                    plan.introduction + '\n\n' + '\n\n'.join(lines),
+                    tuple(citations), plan.intent, tuple(recommendations),
+                )
+
+    seen, citations, sections = set(), [], []
     for passage in retrieved:
         document = passage.chunk.document
         if document.pk in seen:
             continue
         seen.add(document.pk)
-        sentences = re.split(r'(?<=[.!?])\s+|\n\n', passage.chunk.text)
-        best = sorted(range(len(sentences)), key=lambda i: (-len(query & set(terms(sentences[i]))), i))[:2]
-        excerpt = ' '.join(sentences[i] for i in sorted(best))
+        excerpt = _best_sentences(question, passage.chunk.text, plan.sentences_per_source)
+        if not excerpt:
+            continue
         number = len(citations) + 1
-        citations.append(Citation(number, document.pk, document.title, document.public_url, document.external_id, excerpt))
-        metadata = '; '.join(f'{key}: {value}' for key, value in document.metadata.items() if key in ('format', 'time_of_day', 'cost'))
-        sections.append(f'{document.title} [{number}]\n{excerpt}' + (f'\n{metadata}' if metadata else ''))
-    return Answer(template + '\n\n' + '\n\n'.join(sections), tuple(citations))
+        citations.append(_citation(document, number, excerpt))
+        text = f'{document.title} [{number}]\n{excerpt}'
+        if plan.intent == 'explanation':
+            metadata = _metadata_facts(document)
+            if metadata:
+                text += '\n' + metadata
+        sections.append(text)
+        if len(citations) >= plan.max_sources:
+            break
+
+    if not sections:
+        return Answer(NO_ANSWER + ' Try asking about an activity or group.', intent=plan.intent)
+    return Answer(plan.introduction + '\n\n' + '\n\n'.join(sections), tuple(citations), plan.intent)

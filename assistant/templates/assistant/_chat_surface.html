@@ -1,15 +1,14 @@
 <div class="chat-surface" data-chat-root>
   <div class="chat-log" role="log" aria-live="polite" aria-label="Assistant conversation" tabindex="0" data-chat-log>
-    <article class="message message-assistant"><p class="message-label"><span class="assistant-symbol" aria-hidden="true">✧</span> Assistant</p><p>Hello, glad you're here. What would you like to find out today?</p><p class="muted">I can help you explore activities and information from our available sources. I'm not a person and can't give medical advice.</p></article>
+    <article class="message message-assistant"><p class="message-label"><span class="assistant-symbol" aria-hidden="true">✧</span> Assistant</p><p>Hello! How can I help today?</p><p class="muted">I can help with activities and information, but not medical advice.</p></article>
     {% if answer %}
     <article class="message message-user"><p class="message-label">You</p><p>{{ question }}</p></article>
-    <article class="message message-assistant"><p class="message-label"><span class="assistant-symbol" aria-hidden="true">✧</span> Assistant</p><div class="answer-copy">{{ answer.text|linebreaksbr }}</div>{% include "assistant/_sources.html" %}</article>
+    <article class="message message-assistant"><p class="message-label"><span class="assistant-symbol" aria-hidden="true">✧</span> Assistant</p>{% include "assistant/_answer_content.html" %}</article>
     {% endif %}
   </div>
   <div class="quick-questions" aria-label="Questions to try">
     <button type="button" class="chip" data-quick-question="Find free online morning activities">Free online activities</button>
-    <button type="button" class="chip" data-quick-question="When does the Afternoon Book Circle meet?">Book circles</button>
-    {% if not widget %}<button type="button" class="chip" data-quick-question="Can I bring a friend?">Bringing a friend</button>{% endif %}
+    <button type="button" class="chip" data-quick-question="How can I join the Afternoon Book Circle?">Book circles</button>
   </div>
   <form method="post" action="{% url 'assistant:chat' %}" class="chat-composer" data-chat-form data-endpoint="{% url 'assistant:ask' %}">
     {% csrf_token %}

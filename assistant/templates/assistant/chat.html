@@ -1,15 +1,22 @@
 {% extends "base.html" %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
-<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">A conversation at your pace</p><h1>Your assistant</h1><p>A question is a good place to begin. Let's find something helpful together.</p></div>
+<div class="page-heading"><a class="back-link" href="{% url 'core:home' %}">← Back to home</a><p class="eyebrow">A conversation at your pace</p><h1>Your assistant</h1><p>Ask a question. I'm here to help.</p></div>
 <div class="assistant-layout">
   <section class="chat-card" aria-label="Ask your assistant">
     <div class="chat-card-heading"><span class="assistant-symbol large" aria-hidden="true">✧</span><div><h2>Here to help you explore</h2><p>Answers from our sources, with links you can check.</p></div></div>
     {% include "assistant/_chat_surface.html" with chat_id="page" %}
   </section>
   <aside class="assistant-sidebar">
-    <section class="card"><p class="eyebrow">A few things to try</p><h2>Make room for connection.</h2><p>Ask about a book circle, a creative class, or a gentle morning activity.</p><div class="small-rule"></div><h3>Every answer has a starting point.</h3><p>Open “Sources used” beneath a reply to see the exact passage and where it came from.</p></section>
-    <section class="resource-card"><p class="eyebrow">You're in control</p><h2>Just this conversation.</h2><p>Questions aren't saved to a conversation history. Reading preferences stay in this browser.</p><p>Our current activities are sample records, rather than local listings.</p></section>
+    <section class="card" aria-labelledby="help-types-heading">
+      <h2 id="help-types-heading">How I can help</h2>
+      <ul class="answer-types">
+        <li><span class="answer-type-name">Facts</span><span>Quick answers.</span></li>
+        <li><span class="answer-type-name">Explaining</span><span>Simple explanations.</span></li>
+        <li><span class="answer-type-name">Suggestions</span><span>Ideas for activities.</span></li>
+      </ul>
+    </section>
+    <section class="resource-card assistant-privacy"><h2>Private and simple</h2><p>Questions aren't saved. Activities shown are sample records.</p></section>
   </aside>
 </div>
 {% endblock %}

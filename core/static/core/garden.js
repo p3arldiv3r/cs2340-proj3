@@ -69,6 +69,35 @@
     article.append(element('p', 'message-label', author), element('div', 'answer-copy', text));
     return article;
   }
+  function appendAnswer(article, answer) {
+    if (answer.sources?.length) {
+      const labels = { factual: 'Facts', explanation: 'Explaining', recommendation: 'Suggestions' };
+      article.append(element('p', 'intent-pill', labels[answer.intent] || 'Facts'));
+    }
+    if (answer.recommendations?.length) {
+      const list = element('div', 'recommendation-list');
+      list.setAttribute('aria-label', 'Suggested activities');
+      for (const activity of answer.recommendations) {
+        const card = element('article', 'recommendation-card');
+        const heading = element('h3', '', activity.title + ' ');
+        heading.append(element('span', 'recommendation-citation', `[${activity.source_number}]`));
+        card.append(heading);
+        if (activity.tags?.length) {
+          const tags = element('div', 'recommendation-tags');
+          tags.setAttribute('aria-label', 'Activity details');
+          for (const tag of activity.tags) tags.append(element('span', 'recommendation-tag', tag));
+          card.append(tags);
+        }
+        card.append(element('p', '', activity.description));
+        list.append(card);
+      }
+      article.append(list);
+    } else {
+      article.append(element('div', 'answer-copy', answer.text));
+    }
+    appendSources(article, answer.sources);
+  }
+
   function appendSources(article, sources) {
     if (!sources?.length) return;
     const wrapper = element('div', 'source-list');
@@ -139,8 +168,9 @@
         if (!(response.headers.get('content-type') || '').includes('application/json')) throw new Error('We could not answer right now. Refresh the page and try again.');
         const answer = await response.json();
         if (!response.ok) throw new Error(answer.error || 'We could not answer right now. Please try again shortly.');
-        const reply = message('Assistant', answer.text);
-        appendSources(reply, answer.sources);
+        const reply = element('article', 'message message-assistant');
+        reply.append(element('p', 'message-label', 'Assistant'));
+        appendAnswer(reply, answer);
         const turn = element('div', 'chat-turn');
         turn.append(message('You', question), reply);
         log.append(turn);
