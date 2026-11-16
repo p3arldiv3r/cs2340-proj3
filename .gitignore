@@ -2,6 +2,17 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+# Virtual environments under any other name (e.g. a mistyped `python -m venv`
+# command creating folders like "if/" or "skip/").
+pyvenv.cfg
+**/lib/python3*/
+site-packages/
+**/bin/activate*
+**/bin/python*
+**/bin/pip*
+**/Scripts/activate*
+**/Scripts/python*.exe
+**/Scripts/pip*.exe
 .env
 .env.*
 !.env.example
